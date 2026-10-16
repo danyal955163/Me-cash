@@ -6,5 +6,7 @@ export async function GET(){
  if(error)return NextResponse.json({error:error.message},{status:400});
  let submissions:{task_id:string;status:string;admin_note:string|null}[]=[];
  if(user){const {data}=await supabase.from('task_submissions').select('task_id,status,admin_note').eq('user_id',user.id);submissions=data||[];}
- return NextResponse.json({tasks:tasks||[],submissions});
+ const approvedOneTime=new Set(submissions.filter(s=>s.status==='approved').map(s=>s.task_id));
+ const visible=(tasks||[]).filter((task:any)=>task.completion_type!=='one_time'||!approvedOneTime.has(task.id));
+ return NextResponse.json({tasks:visible,submissions});
 }
