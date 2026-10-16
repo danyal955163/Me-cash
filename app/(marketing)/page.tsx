@@ -1,0 +1,1 @@
+import Navbar from '../../components/marketing/Navbar';import Hero from '../../components/marketing/Hero';import {HowItWorks,Stats,TasksPreview,Payments,Testimonials,FAQ,CTA,Footer} from '../../components/marketing/Sections';export default function Home(){return <><Navbar/><main><Hero/><HowItWorks/><Stats/><TasksPreview/><Payments/><Testimonials/><FAQ/><CTA/></main><Footer/></>}

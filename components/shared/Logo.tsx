@@ -1,0 +1,1 @@
+import Link from 'next/link';export default function Logo(){return <Link href="/" className="flex items-center gap-2 font-extrabold tracking-tight text-xl"><span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500 text-white shadow-glow">₨</span><span>me<span className="text-emerald-500">cash</span></span></Link>}
