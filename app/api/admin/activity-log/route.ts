@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';import {requireAdmin} from '../../../../lib/admin-api';export async function GET(){const a=await requireAdmin();if('error'in a)return a.error;const {data,error}=await a.db.from('admin_activity_log').select('*,profiles(email)').order('created_at',{ascending:false}).limit(200);return NextResponse.json({data:data||[],error:error?.message});}

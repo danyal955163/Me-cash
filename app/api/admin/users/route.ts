@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';import {requireAdmin} from '../../../../lib/admin-api';export async function GET(){const a=await requireAdmin();if('error'in a)return a.error;const {data,error}=await a.db.from('profiles').select('*,wallets(*)').order('created_at',{ascending:false});return NextResponse.json({data:data||[],error:error?.message});}
