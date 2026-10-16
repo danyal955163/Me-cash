@@ -1,0 +1,1 @@
+import AdminTable from "../../../components/admin/AdminTable";export default function Page(){return <AdminTable title="Withdrawals" columns={["User", "RP Amount", "Method", "Account", "Requested", "Status", "Actions"]}/>}

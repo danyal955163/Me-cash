@@ -1,0 +1,1 @@
+import AdminTable from '../../../../components/admin/AdminTable';export default function UserDetail(){return <AdminTable title="User Detail" columns={["Profile","Coins","Red Pocket","Transactions","Actions"]}/>}

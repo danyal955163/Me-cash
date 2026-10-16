@@ -1,0 +1,1 @@
+import AdminTable from "../../../components/admin/AdminTable";export default function Page(){return <AdminTable title="Settings" columns={["Setting", "Current Value", "Action"]}/>}

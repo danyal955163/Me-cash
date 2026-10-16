@@ -1,0 +1,1 @@
+import AdminTable from "../../../components/admin/AdminTable";export default function Page(){return <AdminTable title="Activity Log" columns={["Time", "Admin", "Action", "Target", "Details"]}/>}

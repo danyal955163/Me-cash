@@ -1,0 +1,1 @@
+import AdminTable from "../../../components/admin/AdminTable";export default function Page(){return <AdminTable title="Tasks" columns={["Title", "Reward (Coins)", "RP", "Slots", "Completed", "Status", "Actions"]}/>}

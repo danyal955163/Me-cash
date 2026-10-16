@@ -1,0 +1,1 @@
+import AdminTable from "../../../components/admin/AdminTable";export default function Page(){return <AdminTable title="Referrals" columns={["Referrer", "Referred", "Tasks Done", "Coins", "RP", "Status", "Actions"]}/>}
