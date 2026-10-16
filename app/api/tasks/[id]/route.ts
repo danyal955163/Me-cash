@@ -2,7 +2,7 @@ import {NextResponse} from 'next/server';
 import {createClient} from '../../../../lib/supabase-server';
 import {createAdminClient} from '../../../../lib/supabase-admin';
 import {z} from 'zod';
-const proof=z.object({proof_text:z.string().optional(),proof_url:z.string().url().optional(),proof_images:z.array(z.string()).max(10).optional()});
+const proof=z.object({proof_text:z.string().optional(),proof_url:z.string().url().optional(),proof_images:z.array(z.string()).max(6).optional()});
 export async function GET(_req:Request,{params}:{params:{id:string}}){const db=await createClient();const {data,error}=await db.from('tasks').select('*').eq('id',params.id).single();if(error)return NextResponse.json({error:error.message},{status:404});return NextResponse.json({task:data});}
 export async function POST(req:Request,{params}:{params:{id:string}}){
  const auth=await createClient();const {data:{user}}=await auth.auth.getUser();if(!user)return NextResponse.json({error:'Authentication required'},{status:401});
