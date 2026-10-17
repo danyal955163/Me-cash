@@ -4,16 +4,12 @@ import { useEffect, useState } from 'react';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
 import { Check, Copy, Facebook, MessageCircle, Share2, Twitter } from 'lucide-react';
 
-const promoMessage = (link: string) => `Join Me Cash and earn money by completing simple tasks!\nUse my referral link to get started:\n${link}`;
-
 export default function Referral() {
   const [code, setCode] = useState('mecashuser');
-  const [origin, setOrigin] = useState('');
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, completed: 0 });
 
   useEffect(() => {
-    setOrigin(window.location.origin);
     Promise.all([
       fetch('/api/me', { cache: 'no-store' }).then((response) => response.json()),
       fetch('/api/referrals', { cache: 'no-store' }).then((response) => response.json()),
@@ -28,8 +24,8 @@ export default function Referral() {
     });
   }, []);
 
-  const link = origin ? `${origin}/signup?ref=${encodeURIComponent(code)}` : `/signup?ref=${encodeURIComponent(code)}`;
-  const shareText = promoMessage(link);
+  const link = `https://me-cash.vercel.app/signup?ref=${encodeURIComponent(code)}`;
+  const shareText = `Join Me Cash and earn money by completing simple tasks! Use my referral link to get started: ${link}`;
 
   async function copy() {
     try {
@@ -56,25 +52,7 @@ export default function Referral() {
       <h1 className="text-4xl font-black">Referral Engine</h1>
       <p className="mt-2 text-slate-500">Invite friends with your personal username referral link.</p>
 
-      <section className="mt-8 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-black uppercase tracking-widest text-emerald-700">How It Works / Referral Program</p>
-        <h2 className="mt-2 text-2xl font-black text-slate-900">Earn together with every referral</h2>
-        <ol className="mt-5 grid gap-3 sm:grid-cols-2">
-          {[
-            'Invite a friend → Get 50 to 100 coins (Bonus)',
-            'When your friend completes any task → You get 500 Coins (up to 30 tasks)',
-            'When your friend completes every 5th task (5, 10, 15, 20, 25, 30) → You get 1 Red Pocket',
-            '5% Lifetime Earning',
-          ].map((rule, index) => (
-            <li key={rule} className="flex gap-3 rounded-2xl bg-white p-4 text-sm font-semibold leading-6 text-slate-700 shadow-sm">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 font-black text-emerald-700">{index + 1}</span>
-              <span>{rule}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="mt-6 rounded-3xl bg-gradient-to-r from-emerald-700 to-teal-600 p-7 text-white">
+      <section className="mt-8 rounded-3xl bg-gradient-to-r from-emerald-700 to-teal-600 p-7 text-white">
         <p className="text-sm opacity-70">Your username / referral code</p>
         <div className="mt-2 flex max-w-2xl items-center gap-2 break-all rounded-xl bg-white/15 p-3 text-sm font-bold">
           {code}
@@ -94,10 +72,25 @@ export default function Referral() {
             <Twitter className="mr-2 inline h-4 w-4" />Twitter
           </button>
           <button onClick={copy} className="rounded-xl bg-white px-4 py-3 font-bold text-emerald-700">
-            <Share2 className="mr-2 inline h-4 w-4" />{copied ? 'Copied' : 'Copy link'}
+            <Share2 className="mr-2 inline h-4 w-4" />{copied ? 'Copied' : 'Copy Link'}
           </button>
         </div>
         {copied && <p role="status" className="mt-3 text-sm font-semibold text-white">Invitation message and link copied.</p>}
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-sm sm:p-8">
+        <p className="text-xs font-black uppercase tracking-widest text-emerald-700">Referral Program</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-900">How It Works</h2>
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+          {[
+            '🪙 500 Coins for every task your friend completes.',
+            '🧧 +1 Red Pocket every 5th task (up to 30 tasks).',
+            '💰 5% Lifetime Earning.',
+            '🎁 50–100 Coins Signup Bonus.',
+          ].map((rule) => (
+            <li key={rule} className="rounded-2xl bg-white p-4 text-sm font-semibold leading-6 text-slate-700 shadow-sm">{rule}</li>
+          ))}
+        </ul>
       </section>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">

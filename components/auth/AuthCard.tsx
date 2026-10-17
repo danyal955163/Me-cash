@@ -34,34 +34,45 @@ export default function AuthCard({ mode }: { mode: Mode }) {
     }
 
     setBusy(true);
-    const supabase = createClient();
-    let result;
-    if (mode === 'login') {
-      result = await supabase.auth.signInWithPassword({ email: form.email.trim(), password: form.password });
-    } else if (mode === 'signup') {
-      // Read the URL again at submit time so the referral is not lost if the form
-      // is submitted before the initial query-string effect has run.
+    if (mode === 'signup') {
       const referral = (new URLSearchParams(window.location.search).get('ref') || form.referral).trim();
-      const username = `mecash${Math.floor(100 + Math.random() * 900)}`;
-      result = await supabase.auth.signUp({
-        email: form.email.trim(),
-        password: form.password,
-        options: {
-          data: {
+      const signupUrl = new URL('/api/signup', window.location.origin);
+      if (referral) signupUrl.searchParams.set('ref', referral);
+      try {
+        const response = await fetch(signupUrl.toString(), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            email: form.email.trim(),
+            password: form.password,
             full_name: form.name.trim(),
             phone: form.phone.trim(),
-            username,
-            referral_code: referral || null,
-            referral_username: referral || null,
-          },
-          emailRedirectTo: `${window.location.origin}/dashboard/profile`,
-        },
-      });
-    } else {
-      result = await supabase.auth.resetPasswordForEmail(form.email.trim(), {
-        redirectTo: `${window.location.origin}/login`,
-      });
+            username: `mecash${Math.floor(100 + Math.random() * 900)}`,
+          }),
+        });
+        const result = await response.json();
+        setBusy(false);
+        if (!response.ok) {
+          setError(result.error || 'Signup could not be completed.');
+          return;
+        }
+        if (!result.hasSession) {
+          setMessage('Account created. Check your email to confirm, then login.');
+          return;
+        }
+        router.push('/dashboard/profile');
+        router.refresh();
+      } catch {
+        setBusy(false);
+        setError('Signup could not be completed. Please try again.');
+      }
+      return;
     }
+
+    const supabase = createClient();
+    const result = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email: form.email.trim(), password: form.password })
+      : await supabase.auth.resetPasswordForEmail(form.email.trim(), { redirectTo: `${window.location.origin}/login` });
 
     setBusy(false);
     if (result.error) {
@@ -70,10 +81,6 @@ export default function AuthCard({ mode }: { mode: Mode }) {
     }
     if (mode === 'forgot') {
       setMessage('Check your inbox for the reset link.');
-      return;
-    }
-    if (mode === 'signup' && !('session' in result.data && result.data.session)) {
-      setMessage('Account created. Check your email to confirm, then login.');
       return;
     }
     router.push('/dashboard/profile');
