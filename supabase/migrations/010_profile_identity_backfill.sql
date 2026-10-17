@@ -13,7 +13,7 @@ create unique index if not exists profiles_username_unique on profiles(username)
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path=public as $$
 declare referrer uuid; code text; avatar text;
 begin
-  code := 'mecash' || lower(substr(replace(gen_random_uuid()::text,'-',''),1,3));
+  code := coalesce(nullif(new.raw_user_meta_data->>'username',''),'mecash' || lower(substr(replace(gen_random_uuid()::text,'-',''),1,3)));
   avatar := '/avatars/' || (1 + floor(random()*15))::int || '.png';
   if new.raw_user_meta_data->>'referral_code' is not null then
     select id into referrer from profiles where (username=new.raw_user_meta_data->>'referral_code' or referral_code=new.raw_user_meta_data->>'referral_code') and id<>new.id limit 1;
