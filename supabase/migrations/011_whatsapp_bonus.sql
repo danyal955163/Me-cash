@@ -1,4 +1,0 @@
--- WhatsApp channel bonus support. Apply manually in Supabase SQL Editor.
-alter table transactions drop constraint if exists transactions_type_check;
-alter table transactions add constraint transactions_type_check check (type in ('task_reward','referral_bonus','referral_milestone','withdrawal','refund','adjustment','exchange','bonus'));
-create or replace function public.decrement_wallet_coins(p_user_id uuid,p_coins numeric) returns boolean language plpgsql security definer set search_path=public as $$ begin update wallets set coin_balance=coalesce(coin_balance,0)-p_coins,total_coins_earned=greatest(0,coalesce(total_coins_earned,0)-p_coins),updated_at=now() where user_id=p_user_id and coalesce(coin_balance,0)>=p_coins; return found; end; $$;
