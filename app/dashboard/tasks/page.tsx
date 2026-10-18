@@ -43,6 +43,7 @@ export default function Tasks() {
   const [claiming, setClaiming] = useState(false);
   const [toast, setToast] = useState('');
   const [pageError, setPageError] = useState('');
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -94,7 +95,7 @@ export default function Tasks() {
     window.setTimeout(() => setToast(''), 3500);
   }
 
-  function close() { setActive(null); setFiles([]); setCopied(false); }
+  function close() { setActive(null); setFiles([]); setCopied(false); setLightboxImage(null); }
 
   async function copy() {
     if (!active?.share_message) return;
@@ -217,10 +218,11 @@ export default function Tasks() {
         <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Task details</p><h2 id="task-detail-title" className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">{active.task_name}</h2></div><button type="button" onClick={close} aria-label="Close task details" className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"><X className="h-5 w-5" /></button></div>
         <div className="mt-4 rounded-2xl bg-emerald-50 p-4"><p className="text-sm font-semibold text-slate-700">{active.task_description}</p><p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{active.task_steps}</p><p className="mt-3 font-black text-amber-700">🪙 {Number(active.reward || 0).toLocaleString()} Coins reward</p></div>
         {active.task_type === 'open_link' ? <a href={active.task_url || '#'} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 font-bold text-white">Open Task Link<ArrowUpRight className="h-4 w-4" /></a> : <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="whitespace-pre-wrap text-sm text-slate-700">{active.share_message}</p><button type="button" onClick={copy} className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">{copied ? <Check className="mr-1 inline h-4 w-4" /> : <Copy className="mr-1 inline h-4 w-4" />}{copied ? 'Copied' : 'Copy message'}</button><p className="mt-2 text-xs text-slate-500">Copy this message and follow the instructions above.</p></div>}
-        {(active.proof_images || []).length > 0 && <div className="mt-4"><p className="mb-2 text-sm font-bold text-slate-700">Example proof</p><div className="flex gap-3 overflow-x-auto">{(active.proof_images || []).map((url) => <img key={url} src={url} alt="Task example proof" className="h-32 w-32 shrink-0 rounded-xl object-cover" />)}</div></div>}
+        {(active.proof_images || []).length > 0 && <div className="mt-4"><div className="mb-2 flex items-center justify-between gap-2"><p className="text-sm font-bold text-slate-700">Example proof</p><span className="text-xs font-medium text-slate-500">Click to view full image</span></div><div className="space-y-3">{(active.proof_images || []).map((url, index) => <button key={url} type="button" onClick={() => setLightboxImage(url)} className="group block w-full overflow-hidden rounded-lg border border-slate-200 bg-gray-50 text-left focus:outline-none focus:ring-4 focus:ring-emerald-100" aria-label={`View example proof ${index + 1} full screen`}><img src={url} alt={`Task example proof ${index + 1}`} className="w-full h-auto max-h-64 object-contain bg-gray-50 rounded-lg transition group-hover:opacity-90" /><span className="block border-t border-slate-200 bg-white px-3 py-2 text-center text-xs font-bold text-emerald-700">Click to view full image</span></button>)}</div></div>}
         <label className="mt-4 block text-sm font-bold text-slate-700">Upload proof screenshots (up to 10)<input type="file" accept="image/*" multiple onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 10))} className="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm" /><span className="mt-1 block text-xs font-normal text-slate-500">{files.length}/10 selected</span></label>
         <div className="mt-4 flex gap-3"><button type="button" onClick={close} className="flex-1 rounded-xl border border-slate-200 py-3 font-bold text-slate-600">Cancel</button><button type="button" disabled={busy || !files.length} onClick={submitProof} className="flex-1 rounded-xl bg-emerald-600 py-3 font-bold text-white disabled:bg-slate-300">{busy ? 'Uploading…' : 'Submit Proof'}</button></div>
       </div></div>}
+      {lightboxImage && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Full-screen example proof" onClick={() => setLightboxImage(null)}><button type="button" onClick={() => setLightboxImage(null)} aria-label="Close full-screen image" className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-3 text-white backdrop-blur transition hover:bg-white/25"><X className="h-6 w-6" /></button><img src={lightboxImage} alt="Full-screen task example proof" className="max-h-[92vh] max-w-[95vw] object-contain" onClick={(event) => event.stopPropagation()} /></div>}
     </DashboardShell>
   );
 }
