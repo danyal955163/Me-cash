@@ -58,7 +58,7 @@ export default function Tasks() {
       setUserId(id);
       setPageError('');
       if (id) {
-        const response = await fetch('/api/bonuses/whatsapp', { cache: 'no-store' });
+        const response = await fetch('/api/claim-whatsapp-bonus', { cache: 'no-store' });
         const status = await response.json();
         if (response.ok) setBonusClaimed(Boolean(status.claimed));
       }
@@ -71,7 +71,7 @@ export default function Tasks() {
 
   useEffect(() => {
     if (!userId) return;
-    const storageKey = `wa_joined_${userId}`;
+    const storageKey = `wa_opened_${userId}`;
     const syncOpened = () => setChannelOpened(localStorage.getItem(storageKey) === '1');
     syncOpened();
     window.addEventListener('focus', syncOpened);
@@ -141,10 +141,11 @@ export default function Tasks() {
   }
 
   async function claimWhatsAppBonus() {
-    if (!channelOpened || bonusClaimed || claiming) return;
+    if (bonusClaimed || claiming) return;
+    if (!channelOpened) { notify('Please open the channel first.'); return; }
     setClaiming(true);
     try {
-      const response = await fetch('/api/bonuses/whatsapp', { method: 'POST' });
+      const response = await fetch('/api/claim-whatsapp-bonus', { method: 'POST' });
       const result = await response.json();
       if (response.status === 409 || result.alreadyClaimed) {
         setBonusClaimed(true);
@@ -153,7 +154,8 @@ export default function Tasks() {
       }
       if (!response.ok) throw new Error(result.error || 'Could not claim your reward.');
       setBonusClaimed(true);
-      notify('You earned 1000 coins!');
+      notify('🎉 1000 Coins added to your wallet!');
+      void load();
     } catch (error: any) {
       notify(error.message || 'Could not claim your reward. Please try again.');
     } finally { setClaiming(false); }
@@ -161,7 +163,7 @@ export default function Tasks() {
 
   function markChannelOpened() {
     if (!userId) return;
-    try { localStorage.setItem(`wa_joined_${userId}`, '1'); } catch { /* Continue opening the channel if storage is unavailable. */ }
+    try { localStorage.setItem(`wa_opened_${userId}`, '1'); } catch { /* Continue opening the channel if storage is unavailable. */ }
   }
 
   return (
@@ -199,7 +201,7 @@ export default function Tasks() {
           <article className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-[#e8fff4] via-white to-[#d7f8e8] p-5 shadow-sm sm:p-6">
             <div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#25a568] text-white shadow-md"><Send className="h-6 w-6" /></span><span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-800">🪙 1,000 · one-time</span></div>
             <h3 className="mt-4 text-xl font-black text-slate-900">Join our WhatsApp Channel</h3><p className="mt-1 text-sm text-slate-600">Get updates from Me Cash and claim your one-time channel bonus.</p>
-            {bonusClaimed ? <span className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-black text-emerald-800"><BadgeCheck className="h-4 w-4" />1000 coins claimed</span> : <><a href={channelUrl} target="_blank" rel="noopener noreferrer" onClick={markChannelOpened} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#168451] px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-[#106d42]">Open WhatsApp Channel<ArrowUpRight className="h-4 w-4" /></a><div className="mt-3"><button type="button" onClick={claimWhatsAppBonus} disabled={claiming || !channelOpened} className={`w-full rounded-xl px-4 py-3 text-sm font-black transition disabled:cursor-not-allowed ${channelOpened ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-slate-100 text-slate-400'}`}>{claiming ? <><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />Claiming…</> : channelOpened ? 'Claim 1000 Coins' : 'Open the channel to unlock your claim'}</button><p className="mt-2 text-center text-xs text-slate-500">The claim button unlocks after you return to this page.</p></div></>}
+            {bonusClaimed ? <span className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-black text-emerald-800"><BadgeCheck className="h-4 w-4" />1000 coins claimed</span> : <><a href={channelUrl} target="_blank" rel="noopener noreferrer" onClick={markChannelOpened} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#168451] px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-[#106d42]">Open WhatsApp Channel<ArrowUpRight className="h-4 w-4" /></a><div className="mt-3"><button type="button" onClick={claimWhatsAppBonus} disabled={claiming || bonusClaimed} className={`w-full rounded-xl px-4 py-3 text-sm font-black transition disabled:cursor-not-allowed bg-amber-400 text-amber-950 hover:bg-amber-300`}>{claiming ? <><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />Claiming…</> : 'Claim 1000 Coins'}</button><p className="mt-2 text-center text-xs text-slate-500">The claim button unlocks after you return to this page.</p></div></>}
           </article>
 
           <a href={supportUrl} className="group flex min-h-60 flex-col justify-between rounded-3xl border border-sky-100 bg-gradient-to-br from-[#e8f5ff] via-white to-[#dbeafe] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6">
