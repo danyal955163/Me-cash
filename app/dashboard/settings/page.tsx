@@ -95,7 +95,7 @@ export default function Settings() {
           <label className="text-xs font-bold text-slate-500">Account number<input value={number} onChange={(event) => setNumber(event.target.value)} required minLength={5} className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900" placeholder="Wallet or bank number" /></label>
           <button disabled={saving} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-3 font-bold text-white shadow-md disabled:opacity-60 sm:col-span-3">{saving ? <><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />Saving…</> : profile.payment_method ? 'Save Changes' : 'Save Payment Method'}</button>
         </form>
-      </section>
+      </section><section className="mt-5 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Legal & Security</p><div className="mt-3 flex flex-wrap gap-4 text-sm font-bold text-emerald-700"><a href="/terms">Terms & Conditions</a><a href="/privacy">Privacy Policy</a><a href="/security">Security Policy</a></div></section>
     </DashboardShell>
   );
 }
