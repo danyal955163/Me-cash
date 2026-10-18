@@ -1,1 +1,101 @@
-'use client';import DashboardShell from '../../../components/dashboard/DashboardShell';import {useEffect,useState} from 'react';import {createClient} from '../../../lib/supabase-browser';const avatars=Array.from({length:15},(_,i)=>`/avatars/${i+1}.png`);export default function Settings(){const [profile,setProfile]=useState<any>({});const [phone,setPhone]=useState('');const [method,setMethod]=useState('jazzcash');const [name,setName]=useState('');const [number,setNumber]=useState('');const [password,setPassword]=useState('');const [saving,setSaving]=useState(false);const [message,setMessage]=useState('');useEffect(()=>{fetch('/api/me',{cache:'no-store'}).then(r=>r.json()).then(x=>{const p=x.profile||{};setProfile(p);setPhone(p.phone||'');setMethod(p.payment_method||'jazzcash');setName(p.payment_account_name||'');setNumber(p.payment_account_number||'')})},[]);async function save(body:any,success:string){setSaving(true);setMessage('');const r=await fetch('/api/profile',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)});setSaving(false);if(r.ok){setMessage(success);setProfile((p:any)=>({...p,...body}))}else setMessage('Could not save changes.')}async function savePayment(e:React.FormEvent){e.preventDefault();await save({payment_method:method,payment_account_name:name,payment_account_number:number},'Payment method saved.')}async function deletePayment(){if(!confirm('Delete saved payment details?'))return;await save({payment_method:null,payment_account_name:null,payment_account_number:null},'Payment details deleted.');setName('');setNumber('')}async function savePhone(e:React.FormEvent){e.preventDefault();await save({phone},'Phone number saved.')}async function changePassword(e:React.FormEvent){e.preventDefault();if(password.length<6){setMessage('Password must be at least 6 characters.');return}setSaving(true);const {error}=await createClient().auth.updateUser({password});setSaving(false);setPassword('');setMessage(error?error.message:'Password changed successfully.')}async function upload(e:React.ChangeEvent<HTMLInputElement>){const file=e.target.files?.[0];if(!file||!profile.id)return;setSaving(true);const client=createClient();const path=`${profile.id}/avatar.png`;const up=await client.storage.from('avatars').upload(path,file,{contentType:file.type,upsert:true});if(up.error){setMessage('Avatar upload failed.');setSaving(false);return}const url=client.storage.from('avatars').getPublicUrl(path).data.publicUrl;await save({avatar_url:`${url}?t=${Date.now()}`},'Avatar updated.');setSaving(false)}return <DashboardShell><h1 className="text-4xl font-black">Settings</h1><p className="mt-2 text-slate-500">Manage your avatar, payment method, phone number, and password.</p>{message&&<div className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</div>}<section className="mt-8 rounded-3xl bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">Choose Avatar</h2><div className="mt-4 grid grid-cols-5 gap-3 sm:grid-cols-8 md:grid-cols-10">{avatars.map(url=><button key={url} type="button" onClick={()=>save({avatar_url:url},'Avatar updated.')} className={`rounded-full p-1 ${profile.avatar_url===url?'ring-4 ring-emerald-400':''}`}><img src={url} alt="Choose avatar" className="aspect-square w-full rounded-full"/></button>)}</div><label className="mt-5 inline-block cursor-pointer rounded-xl border px-4 py-3 text-sm font-bold">Upload custom avatar<input type="file" accept="image/*" onChange={upload} disabled={saving} className="hidden"/></label></section><section className="mt-6 rounded-3xl bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-xl font-bold">Payment Method</h2>{profile.payment_method&&<button type="button" onClick={deletePayment} className="text-sm font-bold text-red-600">Delete</button>}</div><form onSubmit={savePayment} className="mt-4 grid gap-3 sm:grid-cols-3"><select value={method} onChange={e=>setMethod(e.target.value)} className="rounded-xl border p-3"><option value="jazzcash">JazzCash</option><option value="easypaisa">Easypaisa</option><option value="bank">Bank</option></select><input value={name} onChange={e=>setName(e.target.value)} placeholder="Account name" required className="rounded-xl border p-3"/><input value={number} onChange={e=>setNumber(e.target.value)} placeholder="Account number" required className="rounded-xl border p-3"/><button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white sm:col-span-3">Save Payment Method</button></form></section><section className="mt-6 rounded-3xl bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">Phone Number</h2><form onSubmit={savePhone} className="mt-4 flex flex-wrap gap-3"><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+92 300 1234567" className="min-w-[240px] flex-1 rounded-xl border p-3"/><button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white">Save Phone</button></form></section><section className="mt-6 rounded-3xl bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">Change Password</h2><form onSubmit={changePassword} className="mt-4 flex flex-wrap gap-3"><input value={password} onChange={e=>setPassword(e.target.value)} type="password" minLength={6} placeholder="New password" required className="min-w-[240px] flex-1 rounded-xl border p-3"/><button disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white">Change Password</button></form></section></DashboardShell>}
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Check, CreditCard, LoaderCircle, Trash2 } from 'lucide-react';
+import DashboardShell from '../../../components/dashboard/DashboardShell';
+
+const avatars = Array.from({ length: 8 }, (_, index) => `/avatars/boy${index + 1}.png`);
+type Profile = { avatar_url?: string | null; payment_method?: string | null; payment_account_name?: string | null; payment_account_number?: string | null };
+
+export default function Settings() {
+  const [profile, setProfile] = useState<Profile>({});
+  const [method, setMethod] = useState('jazzcash');
+  const [name, setName] = useState('');
+  const [number, setNumber] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetch('/api/me', { cache: 'no-store' }).then((response) => response.json()).then((result) => {
+      const current = result.profile || {};
+      setProfile(current);
+      setMethod(current.payment_method || 'jazzcash');
+      setName(current.payment_account_name || '');
+      setNumber(current.payment_account_number || '');
+    }).catch(() => setMessage('Could not load your settings.'));
+  }, []);
+
+  async function save(body: Record<string, unknown>, success: string) {
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not save changes.');
+      setProfile((current) => ({ ...current, ...body }));
+      setMessage(success);
+    } catch (error: any) {
+      setMessage(error.message || 'Could not save changes.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePayment() {
+    if (!window.confirm('Delete your saved payment method? You will need to add one before withdrawing.')) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/profile', { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not delete payment details.');
+      setProfile((current) => ({ ...current, payment_method: null, payment_account_name: null, payment_account_number: null }));
+      setName('');
+      setNumber('');
+      setMessage('Payment method deleted.');
+    } catch (error: any) {
+      setMessage(error.message || 'Could not delete payment details.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const methodName = profile.payment_method ? ({ jazzcash: 'JazzCash', easypaisa: 'Easypaisa', bank: 'Bank' }[profile.payment_method] || profile.payment_method) : 'No payment method saved';
+
+  return (
+    <DashboardShell>
+      <div className="flex items-center gap-4">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-lg"><CreditCard /></div>
+        <div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Account</p><h1 className="text-3xl font-black">Settings</h1><p className="mt-1 text-sm text-slate-500">Manage your avatar and payout method.</p></div>
+      </div>
+      {message && <div role="status" className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{message}</div>}
+
+      <section className="mt-7 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
+        <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Personalize</p><h2 className="mt-1 text-xl font-black">Change Avatar</h2></div><span className="text-xs font-bold text-slate-400">8 avatars</span></div>
+        <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-8">
+          {avatars.map((url, index) => {
+            const selected = profile.avatar_url === url;
+            return <button key={url} type="button" disabled={saving} onClick={() => save({ avatar_url: url }, 'Avatar updated.')} aria-label={`Choose avatar ${index + 1}`} aria-pressed={selected} className={`relative rounded-full p-1 transition hover:-translate-y-1 disabled:opacity-60 ${selected ? 'ring-4 ring-emerald-400 ring-offset-2' : 'ring-1 ring-slate-200'}`}>
+              <img src={url} alt={`Avatar ${index + 1}`} className="aspect-square w-full rounded-full object-cover" />
+              {selected && <span className="absolute bottom-0 right-0 grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-white"><Check className="h-3 w-3" /></span>}
+            </button>;
+          })}
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Payouts</p><h2 className="mt-1 text-xl font-black">Payment Method</h2><p className="mt-1 text-sm text-slate-500">Withdrawals use these saved details.</p></div>
+          {profile.payment_method && <button type="button" disabled={saving} onClick={deletePayment} className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"><Trash2 className="mr-1 inline h-4 w-4" />Delete</button>}
+        </div>
+        {profile.payment_method && <div className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50 p-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><CreditCard className="h-5 w-5" /></span><div><p className="font-bold">{methodName}</p><p className="text-sm text-slate-500">{profile.payment_account_name} · {profile.payment_account_number}</p></div></div>}
+        <form onSubmit={(event) => { event.preventDefault(); save({ payment_method: method, payment_account_name: name.trim(), payment_account_number: number.trim() }, 'Payment method saved.'); }} className="mt-5 grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-bold text-slate-500">Method<select value={method} onChange={(event) => setMethod(event.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900"><option value="jazzcash">JazzCash</option><option value="easypaisa">Easypaisa</option><option value="bank">Bank</option></select></label>
+          <label className="text-xs font-bold text-slate-500">Account name<input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900" placeholder="Name on account" /></label>
+          <label className="text-xs font-bold text-slate-500">Account number<input value={number} onChange={(event) => setNumber(event.target.value)} required minLength={5} className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900" placeholder="Wallet or bank number" /></label>
+          <button disabled={saving} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-3 font-bold text-white shadow-md disabled:opacity-60 sm:col-span-3">{saving ? <><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />Saving…</> : profile.payment_method ? 'Save Changes' : 'Save Payment Method'}</button>
+        </form>
+      </section>
+    </DashboardShell>
+  );
+}

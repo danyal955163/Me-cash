@@ -1,1 +1,82 @@
-'use client';import DashboardShell from '../../../components/dashboard/DashboardShell';import {useEffect,useState} from 'react';import {Copy,LogOut,Settings} from 'lucide-react';import {createClient} from '../../../lib/supabase-browser';import {useRouter} from 'next/navigation';export default function Profile(){const [d,setD]=useState<any>(null);const router=useRouter();useEffect(()=>{fetch('/api/me',{cache:'no-store'}).then(r=>r.json()).then(setD)},[]);if(!d)return <DashboardShell><p>Loading profile…</p></DashboardShell>;const p=d.profile||{},w=d.wallet||{},subs=d.submissions||[],withdrawals=d.withdrawals||[],username=p.username||p.referral_code||'mecashuser';async function copy(){try{await navigator.clipboard.writeText(username);alert('Username copied.')}catch{alert('Could not copy username.')}}async function logout(){await createClient().auth.signOut();router.push('/login')}const method=p.payment_method?(p.payment_method==='bank'?'Bank':p.payment_method==='easypaisa'?'Easypaisa':'JazzCash'):'No payment method saved';const masked=p.payment_account_number?(p.payment_account_number.length>6?p.payment_account_number.slice(0,3)+'xxx'+p.payment_account_number.slice(-4):p.payment_account_number):'';return <DashboardShell><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-bold text-emerald-600">YOUR PROFILE</p><h1 className="mt-2 text-4xl font-black">{p.full_name||'Me Cash User'}</h1><p className="mt-1 text-sm font-bold text-emerald-700">@{username}</p><p className="mt-2 text-slate-500">Member since {p.created_at?new Date(p.created_at).toLocaleDateString():'—'}</p></div><button onClick={logout} className="rounded-xl border border-red-200 px-4 py-2 font-bold text-red-600"><LogOut className="mr-1 inline h-4 w-4"/>Logout</button></div><section className="mt-6 flex flex-wrap items-center gap-5 rounded-3xl bg-white p-6 shadow-sm"><img src={p.avatar_url||'/avatars/1.png'} alt="Your avatar" className="h-24 w-24 rounded-full object-cover ring-4 ring-emerald-100"/><div><p className="text-sm text-slate-500">Full Name</p><p className="font-bold">{p.full_name||'Me Cash User'}</p><p className="mt-2 text-sm text-slate-500">Username</p><p className="font-bold">{username}<button onClick={copy} className="ml-2 rounded-lg bg-emerald-50 p-1 text-emerald-700"><Copy className="h-4 w-4"/></button></p><p className="mt-2 text-sm text-slate-500">Email</p><p className="font-bold">{p.email||d.user?.email||'—'}</p><p className="mt-2 text-sm text-slate-500">Phone</p><p className="font-bold">{p.phone||'Not added'}</p></div></section><section className="mt-6 rounded-3xl bg-white p-6 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm text-slate-500">Saved Payment Method</p><p className="font-bold">{method}</p>{masked&&<p className="text-sm text-slate-600">{masked}{p.payment_account_name&&` · ${p.payment_account_name}`}</p>}</div><div className="flex gap-2"><button onClick={()=>router.push('/dashboard/settings')} className="rounded-xl border px-4 py-2 text-sm font-bold">Edit</button><button onClick={()=>router.push('/dashboard/settings')} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">Add New Method</button></div></div></section><section className="mt-6 grid gap-4 sm:grid-cols-4"><Stat title="Tasks Completed" value={subs.filter((x:any)=>x.status==='approved').length} icon="✅"/><Stat title="Tasks Pending" value={subs.filter((x:any)=>x.status==='pending').length} icon="⏳"/><Stat title="Total Withdrawals" value={withdrawals.length} icon="↗"/><Stat title="Total Withdrawal RP" value={withdrawals.filter((x:any)=>x.status==='approved').reduce((n:number,x:any)=>n+Number(x.red_pocket_amount||x.amount||0),0)} icon="🧾"/></section><section className="mt-6 grid gap-4 sm:grid-cols-3"><Stat title="Current Coins" value={Number(w.coin_balance||0).toLocaleString()} icon="🪙"/><Stat title="Current RP" value={Number(w.red_pocket_balance||0).toLocaleString()} icon="🧧"/><Stat title="Total Earned" value={Number(w.total_coins_earned||0).toLocaleString()} icon="💰"/></section><div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm"><div><p className="font-bold">Account settings</p><p className="text-sm text-slate-500">Update your avatar, phone, password, and payment method in Settings.</p></div><button onClick={()=>router.push('/dashboard/settings')} className="rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white"><Settings className="mr-2 inline h-4 w-4"/>Manage Settings</button></div></DashboardShell>}function Stat({title,value,icon}:{title:string;value:any;icon:string}){return <div className="rounded-2xl bg-white p-5 shadow-sm"><span className="text-2xl">{icon}</span><p className="mt-3 text-sm text-slate-500">{title}</p><b className="text-2xl">{value}</b></div>}
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ArrowUpRight, CircleDollarSign, Gamepad2, History, Settings, WalletCards } from 'lucide-react';
+import DashboardShell from '../../../components/dashboard/DashboardShell';
+
+type ProfileData = {
+  profile?: { id?: string; full_name?: string; username?: string; referral_code?: string; avatar_url?: string };
+  wallet?: { coin_balance?: number; red_pocket_balance?: number };
+  submissions?: Array<{ status: string }>;
+  transactions?: Array<{ id: string }>;
+  user?: { id?: string; email?: string };
+};
+
+export default function Profile() {
+  const [data, setData] = useState<ProfileData | null>(null);
+
+  useEffect(() => {
+    fetch('/api/me', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then(setData)
+      .catch(() => setData({}));
+  }, []);
+
+  if (!data) return <DashboardShell><div className="rounded-3xl bg-white p-8 text-slate-500">Loading your dashboard…</div></DashboardShell>;
+
+  const profile = data.profile || {};
+  const wallet = data.wallet || {};
+  const userId = profile.id || data.user?.id || '';
+  const username = profile.username || profile.referral_code || 'mecashuser';
+  const completedTasks = data.submissions?.filter((submission) => submission.status === 'approved').length || 0;
+  const coins = Number(wallet.coin_balance || 0);
+  const redPockets = Number(wallet.red_pocket_balance || 0);
+
+  const actions = [
+    { href: '/dashboard/wallet', title: 'My Wallet', description: `${coins.toLocaleString()} Coins · ${redPockets.toLocaleString()} RP`, icon: WalletCards, accent: 'from-amber-400 to-orange-500', tag: 'BALANCE' },
+    { href: '/dashboard/withdraw', title: 'Withdraw', description: `${redPockets.toLocaleString()} Red Pocket available`, icon: CircleDollarSign, accent: 'from-rose-500 to-red-700', tag: 'CASH OUT' },
+    { href: '/dashboard/game-history', title: 'Game History', description: `${completedTasks} approved tasks completed`, icon: Gamepad2, accent: 'from-sky-500 to-indigo-600', tag: 'TASKS' },
+    { href: '/dashboard/transactions', title: 'Transaction History', description: 'Track rewards, exchanges and withdrawals', icon: History, accent: 'from-emerald-500 to-teal-700', tag: 'ACTIVITY' },
+  ];
+
+  return (
+    <DashboardShell>
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#101b35] via-[#123a46] to-[#075c55] p-6 text-white shadow-xl sm:p-9">
+        <div className="pointer-events-none absolute -right-14 -top-20 h-64 w-64 rounded-full border-[36px] border-white/5" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+            <img src={profile.avatar_url || '/avatars/boy1.png'} alt="Profile avatar" className="h-20 w-20 shrink-0 rounded-full border-4 border-amber-300 object-cover shadow-lg sm:h-28 sm:w-28" />
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-200">Player profile</p>
+              <h1 className="mt-2 truncate text-2xl font-black sm:text-4xl">{profile.full_name || 'Me Cash Player'}</h1>
+              <p className="mt-1 truncate font-bold text-emerald-100">@{username}</p>
+              <p className="mt-2 truncate font-mono text-[11px] text-white/55">UID: {userId || '—'}</p>
+            </div>
+          </div>
+          <Link href="/dashboard/settings" aria-label="Settings" title="Settings" className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 text-white transition hover:bg-white/20">
+            <Settings className="h-5 w-5" />
+          </Link>
+        </div>
+        <div className="relative mt-7 flex flex-wrap gap-3">
+          <div className="rounded-xl border border-white/10 bg-black/15 px-4 py-2 text-sm"><span className="text-white/55">Coins</span><b className="ml-2 text-amber-200">{coins.toLocaleString()}</b></div>
+          <div className="rounded-xl border border-white/10 bg-black/15 px-4 py-2 text-sm"><span className="text-white/55">Red Pocket</span><b className="ml-2 text-rose-200">{redPockets.toLocaleString()} RP</b></div>
+        </div>
+      </section>
+
+      <div className="mt-8 flex items-end justify-between gap-3">
+        <div><p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Your account</p><h2 className="mt-1 text-2xl font-black text-slate-900">Quick access</h2></div>
+        <p className="hidden text-sm text-slate-500 sm:block">Choose where to go next</p>
+      </div>
+      <section className="mt-4 grid gap-4 sm:grid-cols-2">
+        {actions.map(({ href, title, description, icon: Icon, accent, tag }) => (
+          <Link key={href} href={href} className="group flex min-h-36 items-center gap-4 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg sm:p-6">
+            <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${accent} text-white shadow-lg`}><Icon className="h-7 w-7" /></span>
+            <span className="min-w-0 flex-1"><span className="block text-[10px] font-black tracking-[0.2em] text-slate-400">{tag}</span><span className="mt-1 block text-lg font-black text-slate-900">{title}</span><span className="mt-1 block text-sm text-slate-500">{description}</span></span>
+            <ArrowUpRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:text-emerald-600" />
+          </Link>
+        ))}
+      </section>
+    </DashboardShell>
+  );
+}

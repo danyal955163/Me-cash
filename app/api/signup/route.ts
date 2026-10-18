@@ -11,33 +11,37 @@ export async function POST(req: Request) {
     const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
     const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
     const referral = (new URL(req.url).searchParams.get('ref') || '').trim().toLowerCase();
-
     if (!email || !password || !fullName || !username) {
       return NextResponse.json({ error: 'Please provide all required signup details.' }, { status: 400 });
     }
 
+    const avatarUrl = `/avatars/boy${Math.floor(Math.random() * 8) + 1}.png`;
     const auth = await createClient();
     const { data, error } = await auth.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-          phone,
-          username,
-          referral_code: referral || null,
-        },
+        data: { full_name: fullName, phone, username, referral_code: referral || null, avatar_url: avatarUrl },
         emailRedirectTo: `${new URL(req.url).origin}/dashboard/profile`,
       },
     });
-
     if (error || !data.user) {
       return NextResponse.json({ error: error?.message || 'Signup could not be completed.' }, { status: 400 });
     }
 
+    const admin = createAdminClient();
+    const { data: avatarProfile, error: avatarError } = await admin
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', data.user.id)
+      .select('id')
+      .maybeSingle();
+    if (avatarError || !avatarProfile) {
+      console.error('Signup avatar assignment failed:', avatarError?.message || 'Profile was not created.');
+    }
+
     let referralLinked = false;
     if (referral) {
-      const admin = createAdminClient();
       const { data: referrer, error: referrerError } = await admin
         .from('profiles')
         .select('id')
@@ -66,35 +70,21 @@ export async function POST(req: Request) {
               .is('referred_by', null)
               .select('id')
               .maybeSingle();
-            if (updateError) {
-              console.error('Signup profile referral update failed:', updateError.message);
-            } else {
-              linkedToReferrer = Boolean(updatedProfile);
-            }
+            if (updateError) console.error('Signup profile referral update failed:', updateError.message);
+            else linkedToReferrer = Boolean(updatedProfile);
           }
-
           if (linkedToReferrer) {
             const { error: referralError } = await admin
               .from('referrals')
-              .upsert(
-                { referrer_id: referrer.id, referred_user_id: data.user.id },
-                { onConflict: 'referred_user_id', ignoreDuplicates: true },
-              );
-            if (referralError) {
-              console.error('Signup referral record insert failed:', referralError.message);
-            } else {
-              referralLinked = true;
-            }
+              .upsert({ referrer_id: referrer.id, referred_user_id: data.user.id }, { onConflict: 'referred_user_id', ignoreDuplicates: true });
+            if (referralError) console.error('Signup referral record insert failed:', referralError.message);
+            else referralLinked = true;
           }
         }
       }
     }
 
-    return NextResponse.json({
-      user: { id: data.user.id, email: data.user.email },
-      hasSession: Boolean(data.session),
-      referralLinked,
-    }, { status: 201 });
+    return NextResponse.json({ user: { id: data.user.id, email: data.user.email }, hasSession: Boolean(data.session), referralLinked }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Signup could not be completed.' }, { status: 500 });
   }
