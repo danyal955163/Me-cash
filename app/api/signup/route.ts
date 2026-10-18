@@ -78,7 +78,14 @@ export async function POST(req: Request) {
               .from('referrals')
               .upsert({ referrer_id: referrer.id, referred_user_id: data.user.id }, { onConflict: 'referred_user_id', ignoreDuplicates: true });
             if (referralError) console.error('Signup referral record insert failed:', referralError.message);
-            else referralLinked = true;
+            else {
+              referralLinked = true;
+              const { error: notificationError } = await admin.from('notifications').insert([
+                { user_id: data.user.id, title: 'Referral Link Applied', message: 'Your account is linked to your referrer. Referral rewards are earned as you complete approved tasks.', type: 'referral_completed', link: '/dashboard/referral' },
+                { user_id: referrer.id, title: 'New Referral Joined', message: `${fullName} joined Me Cash using your referral link. Task rewards start after their tasks are approved.`, type: 'referral_completed', link: '/dashboard/referral' },
+              ]);
+              if (notificationError) console.error('Signup referral notification failed:', notificationError.message);
+            }
           }
         }
       }

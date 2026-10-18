@@ -76,6 +76,14 @@ export async function POST(req: Request) {
     }
 
     await db.from('transactions').insert({ user_id: user.id, type: 'withdrawal', amount: -amount, description: 'Red Pocket withdrawal requested', reference_id: withdrawal.id });
+    const { error: notificationError } = await db.from('notifications').insert({
+      user_id: user.id,
+      title: 'Withdrawal Requested',
+      message: `Your request to withdraw ${amount} RP was submitted for review.`,
+      type: 'withdrawal_requested',
+      link: '/dashboard/withdraw#history',
+    });
+    if (notificationError) console.error('Withdrawal request notification failed:', notificationError.message);
     recent.set(user.id, now);
     const { data: updatedWallet } = await db.from('wallets').select('coin_balance,red_pocket_balance').eq('user_id', user.id).single();
     return NextResponse.json({ success: true, withdrawal, wallet: updatedWallet });
