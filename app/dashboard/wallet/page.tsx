@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, Clock3, History, ReceiptText } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpFromLine, History, ReceiptText } from 'lucide-react';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
 import ExchangeModal from '../../../components/dashboard/ExchangeModal';
 
@@ -48,9 +48,7 @@ export default function WalletPage() {
   const milestones = [200000, 500000, 1000000].filter((value) => value <= coins);
 
   const shortcuts = [
-    { label: 'Deposit', detail: 'Unavailable', icon: ArrowDownToLine, disabled: true, href: '#' },
     { label: 'Withdraw', detail: 'Red Pocket', icon: ArrowUpFromLine, disabled: false, href: '/dashboard/withdraw' },
-    { label: 'Deposit History', detail: 'Transactions', icon: Clock3, disabled: false, href: '/dashboard/transactions' },
     { label: 'Withdrawal History', detail: 'Your requests', icon: History, disabled: false, href: '/dashboard/withdraw#history' },
   ];
 
@@ -71,7 +69,7 @@ export default function WalletPage() {
         <BalanceCircle title="Red Pocket Balance" amount={redPocket} detail="RP · cash value" color="#e11d48" icon="🧧" progress={Math.min(100, Math.max(8, redPocket ? Math.round((redPocket / Math.max(redPocket, 1000)) * 100) : 8))} />
       </section>
 
-      <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {shortcuts.map(({ label, detail, icon: Icon, disabled, href }) => {
           const content = <><span className={`grid h-11 w-11 place-items-center rounded-xl ${disabled ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700'}`}><Icon className="h-5 w-5" /></span><span><b className="block text-sm text-slate-800">{label}</b><small className="mt-0.5 block text-xs text-slate-400">{detail}</small></span></>;
           return disabled ? <div key={label} aria-disabled="true" title="Deposits are not available" className="flex cursor-not-allowed items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 opacity-75 sm:p-4">{content}</div> : <Link key={label} href={href} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition hover:border-emerald-200 hover:shadow-md sm:p-4">{content}</Link>;

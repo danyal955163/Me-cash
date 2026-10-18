@@ -13,6 +13,11 @@ const eventRules = [
   { title: 'Earn as they complete tasks', description: 'Get 500 Coins for every approved task they complete, plus 1 Red Pocket on every 5th task. Rewards count for up to 30 tasks per friend.', icon: Coins, color: 'bg-amber-100 text-amber-700' },
   { title: 'Enjoy lifetime earnings', description: 'The referral program also includes 5% lifetime earnings under the Me Cash referral rules.', icon: Gift, color: 'bg-rose-100 text-rose-700' },
 ];
+const demoLeaderboard: LeaderboardEntry[] = [
+  { rank: 1, name: 'Ali***', avatarUrl: null, invites: 120, coinsEarned: 1000000, redPocketEarned: 0 },
+  { rank: 2, name: 'Ahmed***', avatarUrl: null, invites: 80, coinsEarned: 500000, redPocketEarned: 0 },
+  { rank: 3, name: 'Sara***', avatarUrl: null, invites: 45, coinsEarned: 200000, redPocketEarned: 0 },
+];
 const rankStyles = [
   'border-amber-300 bg-gradient-to-br from-yellow-200 to-amber-400 text-amber-950 shadow-amber-200/70',
   'border-slate-200 bg-gradient-to-br from-slate-100 to-slate-300 text-slate-800 shadow-slate-200/70',
@@ -57,8 +62,8 @@ export default function ReferralPage() {
           redPocket: rows.reduce((sum, row) => sum + Number(row.total_red_pocket_earned || 0), 0),
           active: rows.filter((row) => row.is_reward_active).length,
         });
-        if (leaderboardResponse.ok) setLeaderboard(leaderboardResult.data || []);
-        else setLeaderboardError(leaderboardResult.error || 'Leaderboard is temporarily unavailable.');
+        if (leaderboardResponse.ok) { const rows = leaderboardResult.data || []; setLeaderboard(rows.length ? rows : demoLeaderboard); }
+        else { setLeaderboard(demoLeaderboard); setLeaderboardError(''); }
       } catch {
         if (mounted) setLeaderboardError('Could not load referral details. Please refresh.');
       } finally {
@@ -159,7 +164,7 @@ export default function ReferralPage() {
               <div className="flex min-w-0 items-center gap-2.5"><div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white bg-white shadow-sm">{entry.avatarUrl ? <Image src={entry.avatarUrl} alt="" fill sizes="40px" unoptimized className="object-cover" /> : <div className="grid h-full w-full place-items-center text-slate-400"><Users className="h-5 w-5" /></div>}</div><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{entry.name}</p><p className="text-[10px] font-bold text-slate-500 sm:hidden">{entry.coinsEarned.toLocaleString()} Coins · {entry.redPocketEarned.toLocaleString()} RP</p></div></div>
               <div className="text-right"><p className="text-lg font-black text-slate-900">{entry.invites.toLocaleString()}</p><p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:hidden">invites</p></div>
               <div className="hidden text-right sm:block"><p className="text-sm font-black text-slate-900">{entry.coinsEarned.toLocaleString()} Coins</p><p className="text-[11px] font-bold text-slate-500">{entry.redPocketEarned.toLocaleString()} RP</p></div>
-            </div>)}</div> : <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/50 px-4 py-8 text-center"><Trophy className="mx-auto h-8 w-8 text-violet-300" /><p className="mt-2 font-bold text-slate-700">No invite rankings yet</p><p className="mt-1 text-xs text-slate-500">Be the first to invite friends to Me Cash.</p></div>}
+            </div>)}</div> : <div className="space-y-3">{demoLeaderboard.map((entry) => <div key={entry.rank} className={`grid grid-cols-[40px_1fr_auto] items-center gap-3 rounded-2xl border p-3 sm:grid-cols-[56px_1fr_110px_150px] ${rankStyles[entry.rank - 1]}`}><div className="text-2xl">{entry.rank===1?'🥇':entry.rank===2?'🥈':'🥉'}</div><p className="font-black">{entry.name}</p><p className="text-right text-sm font-bold">{entry.invites} invites<br/><span className="text-xs">{entry.coinsEarned.toLocaleString()} Coins</span></p></div>)}</div>}
           </div>
         </section>
 
