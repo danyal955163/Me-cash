@@ -1,1 +1,24 @@
-import {NextResponse} from 'next/server';import {requireAdmin,audit} from '../../../../../../lib/admin-api';export async function POST(req:Request,{params}:{params:{id:string}}){const a=await requireAdmin();if('error'in a)return a.error;const body=await req.json();if(typeof body.admin_note!=='string'||body.admin_note.length<5)return NextResponse.json({error:'Admin note must be at least 5 characters'},{status:400});const {data,error}=await a.db.from('withdrawals').update({status:'rejected',processed_by:a.user.id,processed_at:new Date().toISOString(),admin_note:body.admin_note}).eq('id',params.id).eq('status','pending').select().single();if(error||!data)return NextResponse.json({error:error?.message||'Withdrawal was already processed.'},{status:409});const amount=Number(data.red_pocket_amount||data.amount);const {error:refundError}=await a.db.rpc('increment_wallet_red_pocket',{p_user_id:data.user_id,p_amount:amount});if(refundError){await a.db.from('withdrawals').update({status:'pending',processed_by:null,processed_at:null,admin_note:null}).eq('id',params.id).eq('status','rejected');return NextResponse.json({error:refundError.message},{status:400})}await a.db.from('transactions').insert({user_id:data.user_id,type:'refund',amount,description:'Withdrawal rejected; Red Pocket refunded',reference_id:data.id});await a.db.from('notifications').insert({user_id:data.user_id,title:'Withdrawal Rejected',message:`Your withdrawal was rejected and ${amount} RP was refunded.`,type:'withdrawal_rejected',link:'/dashboard/wallet'});await audit(a.db,a.user.id,'reject_withdrawal','withdrawal',params.id,{admin_note:body.admin_note,refunded:amount});return NextResponse.json({data,refunded:amount})}
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '../../../../../../lib/admin-api';
+import { createAdminClient } from '../../../../../../lib/supabase-admin';
+
+type RouteContext = { params: { id: string } };
+
+export async function POST(_request: Request, { params }: RouteContext) {
+  const auth = await requireAdmin();
+  if ('error' in auth) return auth.error;
+
+  const withdrawalId = params.id;
+  const supabaseAdmin = createAdminClient();
+  const { error } = await supabaseAdmin
+    .from('withdrawals')
+    .update({ status: 'rejected', processed_at: new Date().toISOString() })
+    .eq('id', withdrawalId);
+
+  if (error) {
+    console.error('Failed to reject withdrawal:', error);
+    return NextResponse.json({ error: 'Failed to reject withdrawal.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
