@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, ChevronRight, Clock3, CreditCard, LoaderCircle, Pencil, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Clock3, LoaderCircle, Pencil, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
+import PaymentMethodIcon from '../../../components/ui/PaymentMethodIcon';
 
 type PaymentMethod = 'jazzcash' | 'easypaisa' | 'bank';
 type Profile = { payment_method?: PaymentMethod | null; payment_account_name?: string | null; payment_account_number?: string | null };
@@ -85,7 +86,7 @@ export default function WithdrawPage() {
     }
     setSubmitting(true);
     try {
-      const response = await fetch('/api/withdrawals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ amount: selectedAmount, red_pocket_amount: selectedAmount }) });
+      const response = await fetch('/api/withdrawals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ amount: selectedAmount, red_pocket_amount: selectedAmount, method, account_name: accountName.trim(), account_number: accountNumber.trim() }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Withdrawal could not be submitted.');
       setMessage('Withdrawal request submitted. You can follow its status below.');
@@ -99,7 +100,7 @@ export default function WithdrawPage() {
 
   const paymentForm = (dialog = false) => (
     <form onSubmit={savePayment} className="grid gap-3 sm:grid-cols-3">
-      <label className="text-xs font-bold text-slate-500">Payment method<select value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900">{methods.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>
+      <label className="text-xs font-bold text-slate-500"><span className="flex items-center gap-2">Payment method <PaymentMethodIcon method={method} /></span><select value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900">{methods.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>
       <label className="text-xs font-bold text-slate-500">Account name<input value={accountName} onChange={(event) => setAccountName(event.target.value)} required minLength={2} className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900" placeholder="Name on account" /></label>
       <label className="text-xs font-bold text-slate-500">Account number<input value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} required minLength={5} className="mt-1 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900" placeholder="Wallet or bank number" /></label>
       <button disabled={saving} className="rounded-xl bg-emerald-700 px-5 py-3 font-black text-white disabled:opacity-60 sm:col-span-3">{saving ? 'Saving…' : dialog ? 'Save Changes' : 'Save & Continue'}</button>
@@ -113,7 +114,7 @@ export default function WithdrawPage() {
 
       <section className="mt-6 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Payout destination</p><h2 className="mt-1 text-lg font-black text-slate-900">Payment method</h2></div>{hasSavedMethod && <ShieldCheck className="h-6 w-6 text-emerald-600" />}</div>
-        {hasSavedMethod ? <button type="button" onClick={() => setEditOpen(true)} className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-emerald-300"><span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><CreditCard className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-slate-900">{methodLabel}</b><span className="block text-sm text-slate-500">{maskedNumber} · {profile.payment_account_name}</span></span><Pencil className="h-4 w-4 text-slate-400" /><ChevronRight className="h-4 w-4 text-slate-400" /></button> : <div className="mt-4 rounded-2xl bg-slate-50 p-4"><p className="mb-4 text-sm font-semibold text-slate-700">Add a payout method to continue. Your details will be saved for future withdrawals.</p>{paymentForm()}</div>}
+        {hasSavedMethod ? <button type="button" onClick={() => setEditOpen(true)} className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition hover:border-emerald-300"><PaymentMethodIcon method={profile.payment_method || method} /><span className="min-w-0 flex-1"><b className="block text-slate-900">{methodLabel}</b><span className="block text-sm text-slate-500">{maskedNumber} · {profile.payment_account_name}</span></span><Pencil className="h-4 w-4 text-slate-400" /><ChevronRight className="h-4 w-4 text-slate-400" /></button> : <div className="mt-4 rounded-2xl bg-slate-50 p-4"><p className="mb-4 text-sm font-semibold text-slate-700">Add a payout method to continue. Your details will be saved for future withdrawals.</p>{paymentForm()}</div>}
       </section>
 
       <form onSubmit={submitWithdrawal} className="mt-5 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">

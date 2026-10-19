@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (walletError || !wallet) return NextResponse.json({ error: walletError?.message || 'Wallet not found.' }, { status: 400 });
     if (amount > Number(wallet.red_pocket_balance || 0)) {
-      return NextResponse.json({ error: 'Withdrawal amount exceeds your Red Pocket balance.' }, { status: 400 });
+      return NextResponse.json({ error: 'You do not have enough Red Pocket balance.' }, { status: 400 });
     }
 
     const { data: pending } = await db.from('withdrawals').select('id').eq('user_id', user.id).eq('status', 'pending').maybeSingle();
@@ -70,9 +70,10 @@ export async function POST(req: Request) {
     // Keep the conditional database decrement as the final atomic check in case
     // another request changed the balance after the read above.
     const { data: deducted, error: deductError } = await db.rpc('decrement_wallet_red_pocket', { p_user_id: user.id, p_amount: amount });
-    if (deductError || !deducted) {
-      await db.from('withdrawals').delete().eq('id', withdrawal.id).eq('status', 'pending');
-      return NextResponse.json({ error: deductError?.message || 'Insufficient Red Pocket balance. Withdrawal was rolled back.' }, { status: 400 });
+    if (deductError || deducted !== true) {
+      const { error: rollbackError } = await db.from('withdrawals').delete().eq('id', withdrawal.id).eq('status', 'pending');
+      if (rollbackError) console.error('Withdrawal insert rollback failed:', rollbackError.message);
+      return NextResponse.json({ error: deductError ? deductError.message : 'You do not have enough Red Pocket balance.' }, { status: 400 });
     }
 
     await db.from('transactions').insert({ user_id: user.id, type: 'withdrawal', amount: -amount, description: 'Red Pocket withdrawal requested', reference_id: withdrawal.id });
