@@ -3,23 +3,17 @@ import { requireAdmin, audit } from '../../../../../../lib/admin-api';
 
 type RouteContext = { params: { id: string } };
 
-export async function POST(request: Request, { params }: RouteContext) {
+export async function POST(_request: Request, { params }: RouteContext) {
   const admin = await requireAdmin();
   if ('error' in admin) return admin.error;
 
-  let body: { transaction_id?: unknown };
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 }); }
-  if (typeof body.transaction_id !== 'string' || !body.transaction_id.trim()) {
-    return NextResponse.json({ error: 'Transaction ID required.' }, { status: 400 });
-  }
-
   const { data, error } = await admin.db.from('withdrawals')
-    .update({ status: 'approved', processed_by: admin.user.id, processed_at: new Date().toISOString(), admin_note: body.transaction_id.trim() })
+    .update({ status: 'approved', processed_by: admin.user.id, processed_at: new Date().toISOString() })
     .eq('id', params.id)
     .eq('status', 'pending')
     .select('id,user_id,amount,red_pocket_amount,status')
     .maybeSingle();
+
   if (error || !data) {
     return NextResponse.json({ error: error?.message || 'Withdrawal was already processed or not found.' }, { status: 409 });
   }
@@ -28,7 +22,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { error: statsError } = await admin.db.rpc('increment_withdrawn_rp', { p_user_id: data.user_id, p_amount: amount });
   if (statsError) {
     const { error: rollbackError } = await admin.db.from('withdrawals')
-      .update({ status: 'pending', processed_by: null, processed_at: null, admin_note: null })
+      .update({ status: 'pending', processed_by: null, processed_at: null })
       .eq('id', data.id)
       .eq('status', 'approved');
     if (rollbackError) console.error('Withdrawal approval rollback failed:', rollbackError.message);
@@ -39,6 +33,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     user_id: data.user_id,
     type: 'withdrawal',
     amount,
+    status: 'completed',
     description: 'Red Pocket withdrawal approved',
     reference_id: data.id,
   });
@@ -53,6 +48,6 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
   if (notificationError) console.error('Withdrawal approval notification failed:', notificationError.message);
 
-  await audit(admin.db, admin.user.id, 'approve_withdrawal', 'withdrawal', params.id, { transaction_id: body.transaction_id.trim() });
+  await audit(admin.db, admin.user.id, 'approve_withdrawal', 'withdrawal', params.id, { amount });
   return NextResponse.json({ data });
 }

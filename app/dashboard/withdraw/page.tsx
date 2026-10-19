@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronRight, Clock3, LoaderCircle, Pencil, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Clock3, LoaderCircle, Pencil, ShieldCheck, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
 import PaymentMethodIcon from '../../../components/ui/PaymentMethodIcon';
 
 type PaymentMethod = 'jazzcash' | 'easypaisa' | 'bank';
 type Profile = { payment_method?: PaymentMethod | null; payment_account_name?: string | null; payment_account_number?: string | null };
-type Withdrawal = { id: string; status: string; amount?: number; red_pocket_amount?: number; created_at: string };
+type Withdrawal = { id: string; status: string; amount?: number; red_pocket_amount?: number; method?: PaymentMethod; account_name?: string; account_number?: string; created_at: string };
 const methods: Array<{ value: PaymentMethod; label: string }> = [{ value: 'jazzcash', label: 'JazzCash' }, { value: 'easypaisa', label: 'Easypaisa' }, { value: 'bank', label: 'Bank' }];
 
 export default function WithdrawPage() {
@@ -131,7 +131,7 @@ export default function WithdrawPage() {
 
       <section id="history" className="mt-6 scroll-mt-24 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Your account</p><h2 className="mt-1 text-xl font-black text-slate-900">Withdrawal history</h2></div><Clock3 className="h-5 w-5 text-slate-400" /></div>
-        {loading ? <p className="mt-5 text-sm text-slate-400">Loading history…</p> : history.length ? <div className="mt-4 divide-y divide-slate-100">{history.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 py-4"><div><b className="block text-slate-900">{Number(item.red_pocket_amount ?? item.amount ?? 0).toLocaleString()} RP</b><span className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</span></div><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${item.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : item.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{item.status}</span></div>)}</div> : <p className="mt-5 rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">No withdrawal requests yet.</p>}
+        {loading ? <p className="mt-5 text-sm text-slate-400">Loading history…</p> : history.length ? <div className="mt-4 space-y-3">{history.map((item) => { const status = item.status === 'approved' ? { label: 'Approved', icon: CheckCircle2, style: 'from-emerald-50 to-green-100 text-emerald-800', iconStyle: 'text-emerald-600' } : item.status === 'rejected' ? { label: 'Rejected', icon: XCircle, style: 'from-rose-50 to-red-100 text-rose-800', iconStyle: 'text-rose-600' } : { label: 'Pending', icon: Clock3, style: 'from-amber-50 to-orange-100 text-amber-800', iconStyle: 'text-amber-600' }; const StatusIcon = status.icon; const paymentMethod = (item.method || profile.payment_method || 'jazzcash') as PaymentMethod; return <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><PaymentMethodIcon method={paymentMethod} /><div className="min-w-0 flex-1"><b className="block text-lg font-black text-slate-900">{Number(item.red_pocket_amount ?? item.amount ?? 0).toLocaleString()} RP</b><span className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</span><span className="mt-1 block text-xs font-semibold capitalize text-slate-400">{paymentMethod}</span></div><span className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r px-3 py-1.5 text-xs font-black ${status.style}`}><StatusIcon className={`h-3.5 w-3.5 ${status.iconStyle}`} />{status.label}</span></div>; })}</div> : <p className="mt-5 rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">No withdrawal requests yet.</p>}
       </section>
 
       {editOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-payment-title"><div className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl sm:p-7"><div className="mb-5 flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Payout settings</p><h2 id="edit-payment-title" className="mt-1 text-xl font-black">Change saved method</h2></div><button type="button" onClick={() => setEditOpen(false)} className="rounded-xl border px-3 py-2 text-sm font-bold text-slate-500">Close</button></div>{paymentForm(true)}</div></div>}
