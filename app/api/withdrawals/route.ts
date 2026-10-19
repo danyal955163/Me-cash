@@ -41,17 +41,19 @@ export async function POST(req: Request) {
     if (!parsed.success) return NextResponse.json({ error: 'Please provide valid withdrawal details.' }, { status: 400 });
 
     const amount = parsed.data.red_pocket_amount;
-    const { data: wallet, error: walletError } = await db.from('wallets')
-      .select('red_pocket_balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (walletError || !wallet) return NextResponse.json({ error: walletError?.message || 'Wallet not found.' }, { status: 400 });
-    if (amount > Number(wallet.red_pocket_balance || 0)) {
-      return NextResponse.json({ error: 'You do not have enough Red Pocket balance.' }, { status: 400 });
-    }
-
     const { data: pending } = await db.from('withdrawals').select('id').eq('user_id', user.id).eq('status', 'pending').maybeSingle();
     if (pending) return NextResponse.json({ error: 'You already have a pending withdrawal.' }, { status: 409 });
+
+    // process_withdrawal performs the balance check and deduction atomically.
+    // Do not create a withdrawal history row unless the database confirms success.
+    const { data: success, error: processError } = await db.rpc('process_withdrawal', {
+      p_user_id: user.id,
+      p_amount: amount,
+    });
+    if (processError || success !== true) {
+      console.error('Withdrawal processing failed:', processError?.message || 'Insufficient Red Pocket balance');
+      return NextResponse.json({ error: 'You do not have enough Red Pocket balance.' }, { status: 400 });
+    }
 
     const payload = {
       user_id: user.id,
@@ -67,16 +69,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insertError?.message || 'Could not create withdrawal request.', details: insertError?.details }, { status: 400 });
     }
 
-    // Keep the conditional database decrement as the final atomic check in case
-    // another request changed the balance after the read above.
-    const { data: deducted, error: deductError } = await db.rpc('decrement_wallet_red_pocket', { p_user_id: user.id, p_amount: amount });
-    if (deductError || deducted !== true) {
-      const { error: rollbackError } = await db.from('withdrawals').delete().eq('id', withdrawal.id).eq('status', 'pending');
-      if (rollbackError) console.error('Withdrawal insert rollback failed:', rollbackError.message);
-      return NextResponse.json({ error: deductError ? deductError.message : 'You do not have enough Red Pocket balance.' }, { status: 400 });
-    }
-
-    await db.from('transactions').insert({ user_id: user.id, type: 'withdrawal', amount: -amount, description: 'Red Pocket withdrawal requested', reference_id: withdrawal.id });
+    await db.from('transactions').insert({ user_id: user.id, type: 'withdrawal', amount, status: 'completed', description: 'Red Pocket withdrawal requested', reference_id: withdrawal.id });
     const { error: notificationError } = await db.from('notifications').insert({
       user_id: user.id,
       title: 'Withdrawal Requested',
