@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, BadgeCheck, Check, CirclePlay, Clock3, Copy, Gamepad2, Gift, Link2, LoaderCircle, Mail, Send, Sparkles, X } from 'lucide-react';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
 import { createClient } from '../../../lib/supabase-browser';
+import { TASK_CATEGORIES, TASK_CATEGORY_LABELS, type TaskCategory } from '../../../lib/task-categories';
 
 type Task = {
   id: string;
@@ -16,8 +17,11 @@ type Task = {
   reward: number;
   proof_images?: string[];
   completion_type: 'one_time' | 'repeatable';
+  category?: TaskCategory;
+  is_account_task?: boolean;
 };
 type Submission = { task_id: string; status: string; created_at?: string };
+type AssignedTaskAccount = { email: string; password: string; status: 'assigned' | 'completed' };
 const gradients = [
   'from-violet-600 via-purple-600 to-fuchsia-600',
   'from-sky-600 via-cyan-600 to-teal-500',
@@ -44,6 +48,11 @@ export default function Tasks() {
   const [toast, setToast] = useState('');
   const [pageError, setPageError] = useState('');
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | TaskCategory>('all');
+  const [taskAccount, setTaskAccount] = useState<AssignedTaskAccount | null>(null);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -89,13 +98,40 @@ export default function Tasks() {
     sorted.forEach((submission) => { if (!result.has(submission.task_id)) result.set(submission.task_id, submission); });
     return result;
   }, [subs]);
+  const filteredTasks = useMemo(() => selectedCategory === 'all'
+    ? tasks
+    : tasks.filter((task) => (task.category || 'simple') === selectedCategory), [tasks, selectedCategory]);
+  const activeTaskId = active?.id;
+  const activeUsesAccount = Boolean(active?.is_account_task);
+
+  useEffect(() => {
+    if (!activeTaskId || !activeUsesAccount) {
+      setTaskAccount(null);
+      setAccountLoading(false);
+      setAccountError('');
+      return;
+    }
+    let live = true;
+    setTaskAccount(null);
+    setAccountLoading(true);
+    setAccountError('');
+    fetch(`/api/tasks/assign-account?task_id=${encodeURIComponent(activeTaskId)}`, { cache: 'no-store' })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not check your assigned account.');
+        if (live) setTaskAccount(result.account || null);
+      })
+      .catch((error: unknown) => { if (live) setAccountError(error instanceof Error ? error.message : 'Could not check your assigned account.'); })
+      .finally(() => { if (live) setAccountLoading(false); });
+    return () => { live = false; };
+  }, [activeTaskId, activeUsesAccount]);
 
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(''), 3500);
   }
 
-  function close() { setActive(null); setFiles([]); setCopied(false); setLightboxImage(null); }
+  function close() { setActive(null); setFiles([]); setCopied(false); setLightboxImage(null); setTaskAccount(null); setAccountError(''); }
 
   async function copy() {
     if (!active?.share_message) return;
@@ -112,8 +148,46 @@ export default function Tasks() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function copyCredential(value: string, label: string) {
+    try { await navigator.clipboard.writeText(value); }
+    catch {
+      const element = document.createElement('textarea');
+      element.value = value;
+      document.body.appendChild(element);
+      element.select();
+      document.execCommand('copy');
+      element.remove();
+    }
+    notify(`${label} copied.`);
+  }
+
+  async function getTaskAccount() {
+    if (!active || accountBusy) return;
+    setAccountBusy(true);
+    setAccountError('');
+    try {
+      const response = await fetch('/api/tasks/assign-account', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ task_id: active.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not get an account for this task.');
+      setTaskAccount(result.account || null);
+      if (!result.account) throw new Error('No account was assigned. Please try again.');
+      notify('Account assigned to you.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not get an account for this task.';
+      setAccountError(message);
+      notify(message);
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+
   async function submitProof() {
     if (!active || !files.length) return;
+    if (active.is_account_task && !taskAccount) { notify('Get your account for this task before submitting proof.'); return; }
     setBusy(true);
     try {
       const client = createClient();
@@ -178,10 +252,14 @@ export default function Tasks() {
       </div>
 
       {pageError && <p role="alert" className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{pageError}</p>}
+      <div className="-mx-1 mt-6 overflow-x-auto px-1 pb-2"><div className="flex w-max gap-2" aria-label="Task categories">
+        <button type="button" onClick={() => setSelectedCategory('all')} aria-pressed={selectedCategory === 'all'} className={`rounded-full px-4 py-2 text-sm font-bold transition ${selectedCategory === 'all' ? 'bg-slate-900 text-white shadow' : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>All Tasks</button>
+        {TASK_CATEGORIES.map(({ value, label }) => <button type="button" key={value} onClick={() => setSelectedCategory(value)} aria-pressed={selectedCategory === value} className={`rounded-full px-4 py-2 text-sm font-bold transition ${selectedCategory === value ? 'bg-slate-900 text-white shadow' : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>{label}</button>)}
+      </div></div>
       <div className="mt-7 flex items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-indigo-700">Earn now</p><h2 className="mt-1 text-2xl font-black text-slate-900">Available Tasks</h2></div><button type="button" onClick={() => void load()} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:border-emerald-300">Refresh</button></div>
 
-      {tasks.length ? <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
-        {tasks.map((task, index) => {
+      {filteredTasks.length ? <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+        {filteredTasks.map((task, index) => {
           const submission = latestSubmission.get(task.id);
           const canOpen = task.completion_type === 'repeatable' ? submission?.status !== 'pending' : !submission;
           const Icon = icons[index % icons.length];
@@ -194,7 +272,7 @@ export default function Tasks() {
             <span className="relative mt-auto flex w-full items-center justify-between gap-2 pt-5"><span className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-sm sm:text-sm">{action}<ArrowUpRight className="h-3.5 w-3.5" /></span>{submission && <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] font-bold capitalize">{submission.status}</span>}</span>
           </button>;
         })}
-      </div> : <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-sm"><Gamepad2 className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-bold text-slate-700">No active tasks right now</p><p className="mt-1 text-sm text-slate-500">Check back soon for new ways to earn.</p></div>}
+      </div> : <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-sm"><Gamepad2 className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-bold text-slate-700">{tasks.length ? 'No tasks in this category right now' : 'No active tasks right now'}</p><p className="mt-1 text-sm text-slate-500">Check back soon for new ways to earn.</p></div>}
 
       <section className="mt-8">
         <div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Follow & more</p><h2 className="mt-1 text-2xl font-black text-slate-900">Extra ways to earn</h2></div>
@@ -218,9 +296,12 @@ export default function Tasks() {
         <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">Task details</p><h2 id="task-detail-title" className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">{active.task_name}</h2></div><button type="button" onClick={close} aria-label="Close task details" className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"><X className="h-5 w-5" /></button></div>
         <div className="mt-4 rounded-2xl bg-emerald-50 p-4"><p className="text-sm font-semibold text-slate-700">{active.task_description}</p><p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{active.task_steps}</p><p className="mt-3 font-black text-amber-700">🪙 {Number(active.reward || 0).toLocaleString()} Coins reward</p></div>
         {active.task_type === 'open_link' ? <a href={active.task_url || '#'} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 font-bold text-white">Open Task Link<ArrowUpRight className="h-4 w-4" /></a> : <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="whitespace-pre-wrap text-sm text-slate-700">{active.share_message}</p><button type="button" onClick={copy} className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">{copied ? <Check className="mr-1 inline h-4 w-4" /> : <Copy className="mr-1 inline h-4 w-4" />}{copied ? 'Copied' : 'Copy message'}</button><p className="mt-2 text-xs text-slate-500">Copy this message and follow the instructions above.</p></div>}
+        {active.is_account_task && <section className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-indigo-950">Your task account</p><p className="mt-1 text-xs text-indigo-800">This account is reserved for you for this task.</p></div>{taskAccount && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold capitalize text-indigo-700">{taskAccount.status}</span>}</div>
+          {accountLoading ? <p className="mt-3 inline-flex items-center gap-2 text-sm text-indigo-800"><LoaderCircle className="h-4 w-4 animate-spin" />Checking your assignment…</p> : taskAccount ? <div className="mt-4 space-y-3"><div className="rounded-xl bg-white p-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Email</p><p className="mt-1 break-all font-mono text-sm text-slate-900">{taskAccount.email}</p><button type="button" onClick={() => void copyCredential(taskAccount.email, 'Email')} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"><Copy className="h-3.5 w-3.5" />Copy email</button></div><div className="rounded-xl bg-white p-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Password</p><p className="mt-1 break-all font-mono text-sm text-slate-900">{taskAccount.password}</p><button type="button" onClick={() => void copyCredential(taskAccount.password, 'Password')} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700"><Copy className="h-3.5 w-3.5" />Copy password</button></div></div> : <><p className="mt-3 text-sm text-indigo-900">Get one dedicated account to complete this task.</p>{accountError && <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">{accountError}</p>}<button type="button" onClick={() => void getTaskAccount()} disabled={accountBusy} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 py-3 text-sm font-black text-white disabled:opacity-60">{accountBusy ? <><LoaderCircle className="h-4 w-4 animate-spin" />Getting account…</> : 'Get Account for this Task'}</button></>}
+        </section>}
         {(active.proof_images || []).length > 0 && <div className="mt-4"><div className="mb-2 flex items-center justify-between gap-2"><p className="text-sm font-bold text-slate-700">Example proof</p><span className="text-xs font-medium text-slate-500">Click to view full image</span></div><div className="space-y-3">{(active.proof_images || []).map((url, index) => <button key={url} type="button" onClick={() => setLightboxImage(url)} className="group block w-full overflow-hidden rounded-lg border border-slate-200 bg-gray-50 text-left focus:outline-none focus:ring-4 focus:ring-emerald-100" aria-label={`View example proof ${index + 1} full screen`}><img src={url} alt={`Task example proof ${index + 1}`} className="w-full h-auto max-h-64 object-contain bg-gray-50 rounded-lg transition group-hover:opacity-90" /><span className="block border-t border-slate-200 bg-white px-3 py-2 text-center text-xs font-bold text-emerald-700">Click to view full image</span></button>)}</div></div>}
         <label className="mt-4 block text-sm font-bold text-slate-700">Upload proof screenshots (up to 10)<input type="file" accept="image/*" multiple onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 10))} className="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm" /><span className="mt-1 block text-xs font-normal text-slate-500">{files.length}/10 selected</span></label>
-        <div className="mt-4 flex gap-3"><button type="button" onClick={close} className="flex-1 rounded-xl border border-slate-200 py-3 font-bold text-slate-600">Cancel</button><button type="button" disabled={busy || !files.length} onClick={submitProof} className="flex-1 rounded-xl bg-emerald-600 py-3 font-bold text-white disabled:bg-slate-300">{busy ? 'Uploading…' : 'Submit Proof'}</button></div>
+        <div className="mt-4 flex gap-3"><button type="button" onClick={close} className="flex-1 rounded-xl border border-slate-200 py-3 font-bold text-slate-600">Cancel</button><button type="button" disabled={busy || !files.length || accountLoading || (active.is_account_task === true && !taskAccount)} onClick={submitProof} className="flex-1 rounded-xl bg-emerald-600 py-3 font-bold text-white disabled:bg-slate-300">{busy ? 'Uploading…' : active.is_account_task === true && !taskAccount ? 'Get Account First' : 'Submit Proof'}</button></div>
       </div></div>}
       {lightboxImage && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Full-screen example proof" onClick={() => setLightboxImage(null)}><button type="button" onClick={() => setLightboxImage(null)} aria-label="Close full-screen image" className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-3 text-white backdrop-blur transition hover:bg-white/25"><X className="h-6 w-6" /></button><img src={lightboxImage} alt="Full-screen task example proof" className="max-h-[92vh] max-w-[95vw] object-contain" onClick={(event) => event.stopPropagation()} /></div>}
     </DashboardShell>

@@ -1,1 +1,33 @@
-{"routes":[{"path":"/","title":"Me Cash — Earn Online"},{"path":"/login","title":"Login"},{"path":"/signup","title":"Sign Up"},{"path":"/forgot-password","title":"Forgot Password"},{"path":"/terms","title":"Terms & Conditions"},{"path":"/privacy","title":"Privacy Policy"},{"path":"/security","title":"Security Policy"},{"path":"/admin","title":"Admin Dashboard"},{"path":"/admin/activity","title":"Admin Activity"},{"path":"/admin/exchanges","title":"Admin Exchanges"},{"path":"/admin/notifications","title":"Admin Notifications"},{"path":"/admin/referrals","title":"Admin Referrals"},{"path":"/admin/settings","title":"Admin Settings"},{"path":"/admin/submissions","title":"Admin Submissions"},{"path":"/admin/task-requests","title":"Admin Task Requests"},{"path":"/admin/tasks","title":"Admin Tasks"},{"path":"/admin/users","title":"Admin Users"},{"path":"/admin/users/:id","title":"Admin User Details"},{"path":"/admin/withdrawals","title":"Admin Withdrawals"},{"path":"/dashboard/profile","title":"Profile"},{"path":"/dashboard/game-history","title":"Game History"},{"path":"/dashboard/notifications","title":"Notifications"},{"path":"/dashboard/referral","title":"Referral Program"},{"path":"/dashboard/settings","title":"Settings"},{"path":"/dashboard/tasks","title":"Tasks"},{"path":"/dashboard/transactions","title":"Transaction History"},{"path":"/dashboard/wallet","title":"Wallet"},{"path":"/dashboard/withdraw","title":"Withdraw"}]}
+{
+  "routes": [
+    { "path": "/", "title": "Me Cash — Earn Online" },
+    { "path": "/login", "title": "Login" },
+    { "path": "/signup", "title": "Sign Up" },
+    { "path": "/forgot-password", "title": "Forgot Password" },
+    { "path": "/terms", "title": "Terms & Conditions" },
+    { "path": "/privacy", "title": "Privacy Policy" },
+    { "path": "/security", "title": "Security Policy" },
+    { "path": "/admin", "title": "Admin Dashboard" },
+    { "path": "/admin/activity", "title": "Admin Activity" },
+    { "path": "/admin/exchanges", "title": "Admin Exchanges" },
+    { "path": "/admin/notifications", "title": "Admin Notifications" },
+    { "path": "/admin/referrals", "title": "Admin Referrals" },
+    { "path": "/admin/settings", "title": "Admin Settings" },
+    { "path": "/admin/submissions", "title": "Admin Submissions" },
+    { "path": "/admin/task-accounts", "title": "Admin Task Accounts" },
+    { "path": "/admin/task-requests", "title": "Admin Task Requests" },
+    { "path": "/admin/tasks", "title": "Admin Tasks" },
+    { "path": "/admin/users", "title": "Admin Users" },
+    { "path": "/admin/users/:id", "title": "Admin User Details" },
+    { "path": "/admin/withdrawals", "title": "Admin Withdrawals" },
+    { "path": "/dashboard/profile", "title": "Profile" },
+    { "path": "/dashboard/game-history", "title": "Game History" },
+    { "path": "/dashboard/notifications", "title": "Notifications" },
+    { "path": "/dashboard/referral", "title": "Referral Program" },
+    { "path": "/dashboard/settings", "title": "Settings" },
+    { "path": "/dashboard/tasks", "title": "Tasks" },
+    { "path": "/dashboard/transactions", "title": "Transaction History" },
+    { "path": "/dashboard/wallet", "title": "Wallet" },
+    { "path": "/dashboard/withdraw", "title": "Withdraw" }
+  ]
+}
