@@ -9,6 +9,7 @@
     { "path": "/security", "title": "Security Policy" },
     { "path": "/admin", "title": "Admin Dashboard" },
     { "path": "/admin/activity", "title": "Admin Activity" },
+    { "path": "/admin/categories", "title": "Admin Categories" },
     { "path": "/admin/exchanges", "title": "Admin Exchanges" },
     { "path": "/admin/notifications", "title": "Admin Notifications" },
     { "path": "/admin/referrals", "title": "Admin Referrals" },

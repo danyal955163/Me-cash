@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (!task?.is_account_task) return NextResponse.json({ error: 'This submission does not use an account.' }, { status: 400, headers: noStore });
 
   const { data: account, error } = await admin.db.from('task_accounts')
-    .select('email,password,status')
+    .select('email,password,status,assigned_username')
     .eq('task_id', submission.task_id)
     .eq('assigned_to', submission.user_id)
     .in('status', ['assigned', 'completed'])

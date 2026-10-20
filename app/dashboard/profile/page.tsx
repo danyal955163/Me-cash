@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, CircleDollarSign, Gamepad2, History, Settings, WalletCards } from 'lucide-react';
+import { ArrowUpRight, CircleDollarSign, Copy, Gamepad2, History, Settings, WalletCards } from 'lucide-react';
 import DashboardShell from '../../../components/dashboard/DashboardShell';
 
 type ProfileData = {
@@ -15,6 +15,7 @@ type ProfileData = {
 
 export default function Profile() {
   const [data, setData] = useState<ProfileData | null>(null);
+  const [usernameCopied, setUsernameCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/me', { cache: 'no-store' })
@@ -29,6 +30,19 @@ export default function Profile() {
   const wallet = data.wallet || {};
   const userId = profile.id || data.user?.id || '';
   const username = profile.username || profile.referral_code || 'mecashuser';
+  async function copyUsername() {
+    try { await navigator.clipboard.writeText(username); }
+    catch {
+      const element = document.createElement('textarea');
+      element.value = username;
+      document.body.appendChild(element);
+      element.select();
+      document.execCommand('copy');
+      element.remove();
+    }
+    setUsernameCopied(true);
+    window.setTimeout(() => setUsernameCopied(false), 1800);
+  }
   const completedTasks = data.submissions?.filter((submission) => submission.status === 'approved').length || 0;
   const coins = Number(wallet.coin_balance || 0);
   const redPockets = Number(wallet.red_pocket_balance || 0);
@@ -50,7 +64,7 @@ export default function Profile() {
             <div className="min-w-0">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-200">Player profile</p>
               <h1 className="mt-2 truncate text-2xl font-black sm:text-4xl">{profile.full_name || 'Me Cash Player'}</h1>
-              <p className="mt-1 truncate font-bold text-emerald-100">@{username}</p>
+              <div className="mt-1 flex items-center gap-2"><p className="truncate font-bold text-emerald-100">@{username}</p><button type="button" onClick={() => void copyUsername()} title="Copy username" aria-label="Copy username" className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/10 text-emerald-100 hover:bg-white/20">{usernameCopied ? <span className="text-xs font-black">✓</span> : <Copy className="h-3.5 w-3.5" />}</button></div>
               <p className="mt-2 truncate font-mono text-[11px] text-white/55">UID: {userId || '—'}</p>
             </div>
           </div>

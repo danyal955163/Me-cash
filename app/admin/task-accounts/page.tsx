@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { KeyRound, LoaderCircle, Upload } from 'lucide-react';
-import { TASK_CATEGORY_LABELS, type TaskCategory } from '../../../lib/task-categories';
 
-type AccountTask = { id: string; task_name: string; category: TaskCategory; status: string };
+type AccountTask = { id: string; task_name: string; category_id: string | null; categories?: { id: string; name: string } | null; status: string };
 type AccountRow = {
   id: string;
   email: string;
@@ -87,7 +86,7 @@ export default function TaskAccountsAdmin() {
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-widest text-red-400">Credentials</p><h1 className="mt-2 text-3xl font-black">Task Accounts</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">Upload one unique email:password pair per line. Credentials are only shown to the assigned user and authorized admins.</p></div><span className="grid h-12 w-12 place-items-center rounded-2xl bg-red-950 text-red-300"><KeyRound className="h-6 w-6" /></span></div>
 
     <section className="mt-7 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6">
-      <label className="block text-sm font-bold">Account task<select value={taskId} onChange={(event) => setTaskId(event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-white"><option value="">Select an account task</option>{tasks.map((task) => <option key={task.id} value={task.id}>{task.task_name} · {TASK_CATEGORY_LABELS[task.category] || task.category} · {task.status}</option>)}</select></label>
+      <label className="block text-sm font-bold">Account task<select value={taskId} onChange={(event) => setTaskId(event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-white"><option value="">Select an account task</option>{tasks.map((task) => <option key={task.id} value={task.id}>{task.task_name} · {task.categories?.name || 'Uncategorized'} · {task.status}</option>)}</select></label>
       {selectedTask && <p className="mt-2 text-xs text-slate-400">Selected task: <span className="font-bold text-slate-200">{selectedTask.task_name}</span></p>}
       <label className="mt-5 block text-sm font-bold">Accounts <span className="font-normal text-slate-400">(email@gmail.com:password123, one per line)</span><textarea value={text} onChange={(event) => setText(event.target.value)} rows={8} placeholder={'player1@gmail.com:password123\nplayer2@gmail.com:anotherPassword'} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-800 p-3 font-mono text-sm text-white placeholder:text-slate-500" /></label>
       <button type="button" onClick={() => void uploadAccounts()} disabled={!taskId || !text.trim() || uploading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{uploading ? 'Uploading…' : 'Upload Accounts'}</button>

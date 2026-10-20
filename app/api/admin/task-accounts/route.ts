@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if ('error' in admin) return admin.error;
 
   const { data: tasks, error: tasksError } = await admin.db.from('tasks')
-    .select('id,task_name,category,status,is_account_task')
+    .select('id,task_name,category_id,status,is_account_task,categories:categories!tasks_category_id_fkey(id,name)')
     .eq('is_account_task', true)
     .order('created_at', { ascending: false });
   if (tasksError) {

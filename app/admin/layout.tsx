@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Bell, ClipboardList, KeyRound, LayoutDashboard, ListChecks, LogOut, Menu, Settings, Users, WalletCards, X } from 'lucide-react';
+import { ArrowLeft, Bell, ClipboardList, KeyRound, LayoutDashboard, ListChecks, LogOut, Menu, Settings, Tag, Users, WalletCards, X } from 'lucide-react';
 import { useState } from 'react';
 
 const nav = [
   ['/admin', 'Dashboard', LayoutDashboard],
+  ['/admin/categories', 'Categories', Tag],
   ['/admin/users', 'Users', Users],
   ['/admin/tasks', 'Tasks', ListChecks],
   ['/admin/task-accounts', 'Task Accounts', KeyRound],

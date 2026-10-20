@@ -1,28 +1,43 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, audit } from '../../../../lib/admin-api';
-import { TASK_CATEGORIES } from '../../../../lib/task-categories';
 
-const categoryValues = TASK_CATEGORIES.map((category) => category.value) as [string, ...string[]];
-const taskFields = {
-  task_name: z.string().min(1, 'Task name required'),
-  task_description: z.string().min(1, 'Description required'),
-  task_steps: z.string().min(1, 'Instructions required'),
+const sharedFields = {
+  task_name: z.string().trim().min(1, 'Task name required'),
+  task_description: z.string().trim().min(1, 'Description required'),
+  task_steps: z.string().trim().min(1, 'Instructions required'),
   task_type: z.enum(['open_link', 'share_message']),
   task_url: z.string().optional().nullable(),
   share_message: z.string().optional().nullable(),
   reward: z.number().min(1, 'Reward required'),
   proof_images: z.array(z.string().url()).max(10).optional().default([]),
   completion_type: z.enum(['one_time', 'repeatable']).default('one_time'),
-  category: z.enum(categoryValues).default('simple'),
+  require_url_proof: z.boolean().default(false),
   is_account_task: z.boolean().default(false),
   status: z.enum(['active', 'paused', 'expired', 'draft']).default('draft'),
 };
-const createSchema = z.object(taskFields).superRefine((data, context) => {
+const createSchema = z.object({
+  ...sharedFields,
+  category_id: z.string().uuid('Select a category.'),
+}).superRefine((data, context) => {
   if (data.task_type === 'open_link' && !data.task_url?.trim()) context.addIssue({ code: 'custom', path: ['task_url'], message: 'Task URL is required for Open Link tasks.' });
   if (data.task_type === 'share_message' && !data.share_message?.trim()) context.addIssue({ code: 'custom', path: ['share_message'], message: 'Share Message is required for Share Message tasks.' });
 });
-const patchSchema = z.object(taskFields).partial().superRefine((data, context) => {
+const patchSchema = z.object({
+  task_name: z.string().trim().min(1).optional(),
+  task_description: z.string().trim().min(1).optional(),
+  task_steps: z.string().trim().min(1).optional(),
+  task_type: z.enum(['open_link', 'share_message']).optional(),
+  task_url: z.string().optional().nullable(),
+  share_message: z.string().optional().nullable(),
+  reward: z.number().min(1).optional(),
+  proof_images: z.array(z.string().url()).max(10).optional(),
+  completion_type: z.enum(['one_time', 'repeatable']).optional(),
+  category_id: z.string().uuid().nullable().optional(),
+  require_url_proof: z.boolean().optional(),
+  is_account_task: z.boolean().optional(),
+  status: z.enum(['active', 'paused', 'expired', 'draft']).optional(),
+}).superRefine((data, context) => {
   if (data.task_type === 'open_link' && data.task_url !== undefined && !data.task_url?.trim()) context.addIssue({ code: 'custom', path: ['task_url'], message: 'Task URL is required for Open Link tasks.' });
   if (data.task_type === 'share_message' && data.share_message !== undefined && !data.share_message?.trim()) context.addIssue({ code: 'custom', path: ['share_message'], message: 'Share Message is required for Share Message tasks.' });
 });
@@ -44,23 +59,34 @@ function toTaskData(form: Partial<TaskInput>, adminId: string) {
   if (form.reward !== undefined) { data.reward = Number(form.reward); data.reward_coins = Number(form.reward); }
   if (form.proof_images !== undefined) { data.proof_images = form.proof_images; data.example_images = form.proof_images; }
   if (form.completion_type !== undefined) data.completion_type = form.completion_type;
-  if (form.category !== undefined) data.category = form.category;
+  if (form.category_id !== undefined) data.category_id = form.category_id;
+  if (form.require_url_proof !== undefined) data.require_url_proof = form.require_url_proof;
   if (form.is_account_task !== undefined) data.is_account_task = form.is_account_task;
   if (form.status !== undefined) data.status = form.status;
   data.proof_type = 'screenshot';
   data.slots = 1000;
-  if (form.task_name !== undefined || form.task_description !== undefined || form.task_steps !== undefined || form.task_type !== undefined || form.reward !== undefined || form.category !== undefined || form.is_account_task !== undefined) {
+  if (form.task_name !== undefined || form.task_description !== undefined || form.task_steps !== undefined || form.task_type !== undefined || form.reward !== undefined || form.category_id !== undefined || form.is_account_task !== undefined || form.require_url_proof !== undefined) {
     data.created_by = adminId;
   }
   return data;
 }
 
+async function categoryExists(db: any, categoryId: string) {
+  const { data, error } = await db.from('categories').select('id').eq('id', categoryId).maybeSingle();
+  return !error && Boolean(data);
+}
+
 export async function GET() {
   const admin = await requireAdmin();
   if ('error' in admin) return admin.error;
-  const { data, error } = await admin.db.from('tasks').select('*').order('created_at', { ascending: false });
-  if (error) return NextResponse.json({ error: 'Could not load tasks.' }, { status: 500 });
-  return NextResponse.json({ data: data || [] });
+  const { data, error } = await admin.db.from('tasks')
+    .select('*,categories:categories!tasks_category_id_fkey(id,name)')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Admin tasks list failed:', error.message);
+    return NextResponse.json({ error: 'Could not load tasks.' }, { status: 500 });
+  }
+  return NextResponse.json({ data: data || [] }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function POST(request: Request) {
@@ -71,9 +97,10 @@ export async function POST(request: Request) {
   catch { return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 }); }
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid task fields.', details: parsed.error.flatten() }, { status: 400 });
+  if (!(await categoryExists(admin.db, parsed.data.category_id))) return NextResponse.json({ error: 'Selected category not found.' }, { status: 400 });
 
   const taskData = toTaskData(parsed.data, admin.user.id);
-  const { data, error } = await admin.db.from('tasks').insert(taskData).select().single();
+  const { data, error } = await admin.db.from('tasks').insert(taskData).select('*,categories:categories!tasks_category_id_fkey(id,name)').single();
   if (error) {
     console.error('Task insert failed:', error);
     return NextResponse.json({ error: error.message, details: error.details, hint: error.hint, code: error.code }, { status: 400 });
@@ -92,8 +119,10 @@ export async function PATCH(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid task fields.', details: parsed.error.flatten() }, { status: 400 });
   const id = typeof (body as { id?: unknown }).id === 'string' ? (body as { id: string }).id : '';
   if (!id) return NextResponse.json({ error: 'Task ID required.' }, { status: 400 });
-  const taskData = toTaskData(parsed.data, admin.user.id);
-  const { data, error } = await admin.db.from('tasks').update(taskData).eq('id', id).select().single();
+  if (parsed.data.category_id && !(await categoryExists(admin.db, parsed.data.category_id))) return NextResponse.json({ error: 'Selected category not found.' }, { status: 400 });
+  const taskData = toTaskData(parsed.data as Partial<TaskInput>, admin.user.id);
+  if (!Object.keys(taskData).length) return NextResponse.json({ error: 'No task fields provided.' }, { status: 400 });
+  const { data, error } = await admin.db.from('tasks').update(taskData).eq('id', id).select('*,categories:categories!tasks_category_id_fkey(id,name)').single();
   if (error) {
     console.error('Task update failed:', error);
     return NextResponse.json({ error: error.message, details: error.details, hint: error.hint, code: error.code }, { status: 400 });
