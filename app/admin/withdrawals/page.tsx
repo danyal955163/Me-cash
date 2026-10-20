@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Copy, Search, X } from 'lucide-react';
 import MessageUserButton from '../../../components/admin/MessageUserButton';
+import PaymentMethodIcon from '../../../components/ui/PaymentMethodIcon';
 
 type Row = {
   id: string;
@@ -100,7 +101,7 @@ export default function Withdrawals() {
         <thead className="border-b border-slate-800 text-xs uppercase text-slate-500"><tr>{['User', 'RP Amount', 'Method', 'Account Name', 'Account Number', 'Requested', 'Status', 'Actions'].map((label) => <th className="px-5 py-4" key={label}>{label}</th>)}</tr></thead>
         <tbody>{filtered.map((row) => <tr className="border-b border-slate-800" key={row.id}>
           <td className="px-5 py-4"><b>{row.profiles?.referral_code || row.profiles?.full_name || 'User'}</b><br /><span className="text-xs text-slate-500">{row.profiles?.email}</span></td>
-          <td className="px-5 py-4 font-bold text-red-400">{Number(row.red_pocket_amount || row.amount)} RP</td><td className="px-5 py-4">{row.method}</td><td className="px-5 py-4">{row.account_name}</td>
+          <td className="px-5 py-4 font-bold text-red-400">{Number(row.red_pocket_amount || row.amount)} RP</td><td className="px-5 py-4"><span className="inline-flex items-center gap-2"><PaymentMethodIcon method={row.method as 'jazzcash' | 'easypaisa' | 'bank'} /><span className="capitalize">{row.method}</span></span></td><td className="px-5 py-4">{row.account_name}</td>
           <td className="px-5 py-4"><span className="mr-2">{row.account_number}</span><button title="Copy account number" onClick={() => void copy(row.account_number)} className="rounded bg-slate-700 p-1"><Copy className="h-3 w-3" /></button></td>
           <td className="px-5 py-4 text-slate-400">{new Date(row.created_at).toLocaleString()}</td><td className="px-5 py-4">{row.status}</td>
           <td className="px-5 py-4"><button onClick={() => { setSelected(row); setMode(null); }} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold">View</button><MessageUserButton userId={row.profiles?.id} /></td>
@@ -111,7 +112,7 @@ export default function Withdrawals() {
 
     {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4"><div className="w-full max-w-lg rounded-2xl bg-slate-900 p-6">
       <div className="flex justify-between"><h2 className="text-xl font-black">Withdrawal Details</h2><button onClick={() => setSelected(null)} aria-label="Close details"><X /></button></div>
-      <div className="mt-5 space-y-2 text-sm"><p><b>Name:</b> {selected.profiles?.full_name}</p><p><b>Username:</b> {selected.profiles?.username || selected.profiles?.referral_code || '—'}</p><p><b>Email:</b> {selected.profiles?.email}</p><p><b>Phone:</b> {selected.profiles?.phone || '—'}</p><p><b>Amount:</b> {selected.red_pocket_amount || selected.amount} RP</p>
+      <div className="mt-5 space-y-2 text-sm"><p><b>Name:</b> {selected.profiles?.full_name}</p><p><b>Username:</b> {selected.profiles?.username || selected.profiles?.referral_code || '—'}</p><p><b>Email:</b> {selected.profiles?.email}</p><p><b>Phone:</b> {selected.profiles?.phone || '—'}</p><p><b>Amount:</b> {selected.red_pocket_amount || selected.amount} RP</p><div className="flex items-center gap-3 rounded-xl bg-slate-800 p-3"><PaymentMethodIcon method={selected.method as 'jazzcash' | 'easypaisa' | 'bank'} /><span><b className="block capitalize">{selected.method}</b><span className="text-xs text-slate-400">Payout method</span></span></div>
         {([['Method', selected.method], ['Account Name', selected.account_name], ['Account Number', selected.account_number]] as const).map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3 rounded-lg bg-slate-800 px-3 py-2"><span><b>{label}:</b> {value}</span><button type="button" title={`Copy ${label}`} onClick={() => void copy(String(value))} className="rounded-md bg-slate-700 p-1.5 hover:bg-slate-600"><Copy className="h-3.5 w-3.5" /></button></div>)}
       </div>
       <div className="mt-5 flex gap-2"><button onClick={() => void copy(details(selected))} className="flex-1 rounded-xl bg-blue-700 py-3 font-bold">Copy Details</button><button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(details(selected))}`, '_blank', 'noopener,noreferrer')} className="flex-1 rounded-xl bg-emerald-700 py-3 font-bold">Transfer</button></div>
