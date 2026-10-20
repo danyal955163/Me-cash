@@ -13,7 +13,6 @@ const sharedFields = {
   proof_images: z.array(z.string().url()).max(10).optional().default([]),
   completion_type: z.enum(['one_time', 'repeatable']).default('one_time'),
   require_url_proof: z.boolean().default(false),
-  is_account_task: z.boolean().default(false),
   status: z.enum(['active', 'paused', 'expired', 'draft']).default('draft'),
 };
 const createSchema = z.object({
@@ -35,7 +34,6 @@ const patchSchema = z.object({
   completion_type: z.enum(['one_time', 'repeatable']).optional(),
   category_id: z.string().uuid().nullable().optional(),
   require_url_proof: z.boolean().optional(),
-  is_account_task: z.boolean().optional(),
   status: z.enum(['active', 'paused', 'expired', 'draft']).optional(),
 }).superRefine((data, context) => {
   if (data.task_type === 'open_link' && data.task_url !== undefined && !data.task_url?.trim()) context.addIssue({ code: 'custom', path: ['task_url'], message: 'Task URL is required for Open Link tasks.' });
@@ -61,11 +59,10 @@ function toTaskData(form: Partial<TaskInput>, adminId: string) {
   if (form.completion_type !== undefined) data.completion_type = form.completion_type;
   if (form.category_id !== undefined) data.category_id = form.category_id;
   if (form.require_url_proof !== undefined) data.require_url_proof = form.require_url_proof;
-  if (form.is_account_task !== undefined) data.is_account_task = form.is_account_task;
   if (form.status !== undefined) data.status = form.status;
   data.proof_type = 'screenshot';
   data.slots = 1000;
-  if (form.task_name !== undefined || form.task_description !== undefined || form.task_steps !== undefined || form.task_type !== undefined || form.reward !== undefined || form.category_id !== undefined || form.is_account_task !== undefined || form.require_url_proof !== undefined) {
+  if (form.task_name !== undefined || form.task_description !== undefined || form.task_steps !== undefined || form.task_type !== undefined || form.reward !== undefined || form.category_id !== undefined || form.require_url_proof !== undefined) {
     data.created_by = adminId;
   }
   return data;

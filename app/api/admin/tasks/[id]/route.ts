@@ -15,7 +15,6 @@ const patchSchema = z.object({
   completion_type: z.enum(['one_time', 'repeatable']).optional(),
   category_id: z.string().uuid().nullable().optional(),
   require_url_proof: z.boolean().optional(),
-  is_account_task: z.boolean().optional(),
   status: z.enum(['active', 'paused', 'expired', 'draft']).optional(),
 }).superRefine((data, context) => {
   if (data.task_type === 'open_link' && data.task_url !== undefined && !data.task_url?.trim()) context.addIssue({ code: 'custom', path: ['task_url'], message: 'Task URL is required for Open Link tasks.' });
@@ -57,7 +56,6 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (form.completion_type !== undefined) taskData.completion_type = form.completion_type;
   if (form.category_id !== undefined) taskData.category_id = form.category_id;
   if (form.require_url_proof !== undefined) taskData.require_url_proof = form.require_url_proof;
-  if (form.is_account_task !== undefined) taskData.is_account_task = form.is_account_task;
   if (form.status !== undefined) taskData.status = form.status;
   if (!Object.keys(taskData).length) return NextResponse.json({ error: 'No task fields provided.' }, { status: 400 });
 

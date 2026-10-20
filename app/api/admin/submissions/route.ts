@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
   const status = new URL(request.url).searchParams.get('status');
   let query = admin.db.from('task_submissions')
-    .select('*,profiles:user_id(id,full_name,email,phone,username,referral_code,wallets(coin_balance,red_pocket_balance)),tasks:task_id(id,task_name,task_description,reward,is_account_task)')
+    .select('*,profiles:user_id(id,full_name,email,phone,username,referral_code,wallets(coin_balance,red_pocket_balance)),tasks:task_id(id,task_name,task_description,reward)')
     .order('created_at', { ascending: false });
   if (status && status !== 'all') query = query.eq('status', status);
 

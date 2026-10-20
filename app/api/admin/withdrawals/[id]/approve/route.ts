@@ -13,12 +13,15 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const { error } = await supabaseAdmin
     .from('withdrawals')
     .update({ status: 'approved', processed_at: new Date().toISOString() })
-    .eq('id', withdrawalId);
+    .eq('id', withdrawalId)
+    .eq('status', 'pending');
 
   if (error) {
     console.error('Failed to approve withdrawal:', error);
     return NextResponse.json({ error: 'Failed to approve withdrawal.' }, { status: 500 });
   }
 
+  // RP was reserved when the user requested the withdrawal. Approval must not
+  // touch the wallet again.
   return NextResponse.json({ success: true });
 }

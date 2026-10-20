@@ -66,6 +66,7 @@ export async function POST(req: Request) {
     };
     const { data: withdrawal, error: insertError } = await db.from('withdrawals').insert(payload).select().single();
     if (insertError || !withdrawal) {
+      await db.rpc('refund_withdrawal_rp', { p_user_id: user.id, p_amount: amount });
       return NextResponse.json({ error: insertError?.message || 'Could not create withdrawal request.', details: insertError?.details }, { status: 400 });
     }
 

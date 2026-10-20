@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .select('id,name,sort_order,created_at,updated_at')
     .maybeSingle();
   if (error) {
-    if (error.code === '23505') return NextResponse.json({ error: 'A category with this name already exists.' }, { status: 409 });
+    if (error.code === '23505') return NextResponse.json({ error: 'This category already exists.' }, { status: 409 });
     console.error('Category update failed:', error.message);
     return NextResponse.json({ error: 'Could not update category.' }, { status: 500 });
   }

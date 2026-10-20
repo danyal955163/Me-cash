@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const admin = createAdminClient();
   const { data: task, error: taskError } = await admin.from('tasks')
-    .select('id,task_name,status,completion_type,is_account_task,require_url_proof')
+    .select('id,task_name,status,completion_type,require_url_proof')
     .eq('id', params.id)
     .maybeSingle();
   if (taskError || !task || task.status !== 'active') return NextResponse.json({ error: 'Task is not active.' }, { status: 400 });
@@ -44,20 +44,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     } catch {
       return NextResponse.json({ error: 'Proof URL must start with http:// or https://.' }, { status: 400 });
     }
-  }
-
-  if (task.is_account_task) {
-    const { data: account, error: accountError } = await admin.from('task_accounts')
-      .select('id')
-      .eq('task_id', params.id)
-      .eq('assigned_to', user.id)
-      .in('status', ['assigned', 'completed'])
-      .maybeSingle();
-    if (accountError) {
-      console.error('Task submission account check failed:', accountError.message);
-      return NextResponse.json({ error: 'Could not verify your account assignment.' }, { status: 500 });
-    }
-    if (!account) return NextResponse.json({ error: 'Get an account for this task before submitting proof.' }, { status: 409 });
   }
 
   if (task.completion_type !== 'repeatable') {

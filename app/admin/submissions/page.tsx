@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Copy, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import MessageUserButton from '../../../components/admin/MessageUserButton';
 
 type Wallet = { coin_balance?: number; red_pocket_balance?: number };
@@ -14,7 +14,7 @@ type Profile = {
   username?: string;
   wallets?: Wallet | Wallet[];
 };
-type TaskInfo = { id?: string; task_name?: string; task_description?: string; reward?: number; is_account_task?: boolean };
+type TaskInfo = { id?: string; task_name?: string; task_description?: string; reward?: number };
 type Row = {
   id: string;
   user_id: string;
@@ -27,7 +27,6 @@ type Row = {
   created_at: string;
   profiles?: Profile | null;
   tasks?: TaskInfo | TaskInfo[] | null;
-  task_account?: { email: string; password: string; status: string; assigned_username?: string | null } | null;
 };
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -52,8 +51,6 @@ export default function Submissions() {
   const [pageError, setPageError] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [accountLoading, setAccountLoading] = useState(false);
-  const [accountError, setAccountError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -72,40 +69,6 @@ export default function Submissions() {
 
   useEffect(() => { void load(); }, [filter]);
 
-  useEffect(() => {
-    if (!selected || !one(selected.tasks)?.is_account_task) {
-      setAccountLoading(false);
-      setAccountError('');
-      return;
-    }
-    const submissionId = selected.id;
-    let live = true;
-    setAccountLoading(true);
-    setAccountError('');
-    fetch(`/api/admin/submissions/${submissionId}/account`, { cache: 'no-store' })
-      .then(async (response) => {
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Could not load assigned credentials.');
-        if (live) setSelected((current) => current?.id === submissionId ? { ...current, task_account: result.account || null } : current);
-      })
-      .catch((error: unknown) => { if (live) setAccountError(error instanceof Error ? error.message : 'Could not load assigned credentials.'); })
-      .finally(() => { if (live) setAccountLoading(false); });
-    return () => { live = false; };
-  }, [selected?.id]);
-
-  async function copyCredential(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); }
-    catch {
-      const element = document.createElement('textarea');
-      element.value = value;
-      document.body.appendChild(element);
-      element.select();
-      document.execCommand('copy');
-      element.remove();
-    }
-    setNotice(`${label} copied.`);
-    window.setTimeout(() => setNotice(''), 2500);
-  }
 
   async function act(id: string, action: 'approve' | 'reject') {
     let body = {};
@@ -148,11 +111,10 @@ export default function Submissions() {
     {pageError && <div role="alert" className="mt-4 rounded-xl bg-red-950 px-4 py-3 text-sm font-bold text-red-200">{pageError}</div>}
     <div className="mt-5 flex flex-wrap gap-2">{['all', 'pending', 'approved', 'rejected'].map((status) => <button type="button" onClick={() => setFilter(status)} className={`rounded-xl px-4 py-2 text-sm font-bold capitalize ${filter === status ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-300'}`} key={status}>{status}</button>)}</div>
 
-    <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900"><table className="w-full min-w-[950px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase text-slate-500"><tr>{['User', 'Task', 'Submitted', 'Proof', 'Reward', 'Status', 'Actions'].map((title) => <th className="px-5 py-4" key={title}>{title}</th>)}</tr></thead><tbody>{filtered.map((row) => { const task = one(row.tasks); const proofImages = images(row); return <tr className="border-b border-slate-800" key={row.id}><td className="px-5 py-4"><b>{row.profiles?.referral_code || row.profiles?.full_name || 'User'}</b><br /><span className="text-xs text-slate-500">{row.profiles?.email}</span></td><td className="px-5 py-4">{task?.task_name || 'Task'}{task?.is_account_task && <span className="ml-2 rounded-full bg-indigo-950 px-2 py-1 text-[10px] font-bold text-indigo-300">Account</span>}</td><td className="px-5 py-4 text-slate-400">{new Date(row.created_at).toLocaleString()}</td><td className="px-5 py-4"><div className="flex gap-1">{proofImages.slice(0, 4).map((url, index) => <button type="button" onClick={() => setPreview({ images: proofImages, index })} key={`${url}-${index}`}><img src={url} alt={`Proof ${index + 1}`} className="h-12 w-12 rounded-lg object-cover" /></button>)}</div></td><td className="px-5 py-4 text-amber-400">{Number(task?.reward || 0).toLocaleString()} 🪙</td><td className="px-5 py-4 capitalize">{row.status}</td><td className="px-5 py-4"><div className="flex gap-2"><button type="button" onClick={() => setSelected(row)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold">View</button><MessageUserButton userId={row.profiles?.id} />{row.status === 'pending' && <><button type="button" onClick={() => void act(row.id, 'approve')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold">Approve</button><button type="button" onClick={() => void act(row.id, 'reject')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold">Reject</button></>}</div></td></tr>; })}</tbody></table>{!loading && !filtered.length && <p className="p-10 text-center text-slate-500">No task requests found.</p>}{loading && <p className="p-10 text-center text-slate-500">Loading submissions…</p>}</div>
+    <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900"><table className="w-full min-w-[950px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase text-slate-500"><tr>{['User', 'Task', 'Submitted', 'Proof', 'Reward', 'Status', 'Actions'].map((title) => <th className="px-5 py-4" key={title}>{title}</th>)}</tr></thead><tbody>{filtered.map((row) => { const task = one(row.tasks); const proofImages = images(row); return <tr className="border-b border-slate-800" key={row.id}><td className="px-5 py-4"><b>{row.profiles?.referral_code || row.profiles?.full_name || 'User'}</b><br /><span className="text-xs text-slate-500">{row.profiles?.email}</span></td><td className="px-5 py-4">{task?.task_name || 'Task'}</td><td className="px-5 py-4 text-slate-400">{new Date(row.created_at).toLocaleString()}</td><td className="px-5 py-4"><div className="flex gap-1">{proofImages.slice(0, 4).map((url, index) => <button type="button" onClick={() => setPreview({ images: proofImages, index })} key={`${url}-${index}`}><img src={url} alt={`Proof ${index + 1}`} className="h-12 w-12 rounded-lg object-cover" /></button>)}</div></td><td className="px-5 py-4 text-amber-400">{Number(task?.reward || 0).toLocaleString()} 🪙</td><td className="px-5 py-4 capitalize">{row.status}</td><td className="px-5 py-4"><div className="flex gap-2"><button type="button" onClick={() => setSelected(row)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold">View</button><MessageUserButton userId={row.profiles?.id} />{row.status === 'pending' && <><button type="button" onClick={() => void act(row.id, 'approve')} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold">Approve</button><button type="button" onClick={() => void act(row.id, 'reject')} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold">Reject</button></>}</div></td></tr>; })}</tbody></table>{!loading && !filtered.length && <p className="p-10 text-center text-slate-500">No task requests found.</p>}{loading && <p className="p-10 text-center text-slate-500">Loading submissions…</p>}</div>
 
     {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4"><div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-slate-900 p-5 sm:p-6"><div className="flex items-center justify-between"><h2 className="text-xl font-black">Submission Review</h2><button type="button" onClick={() => setSelected(null)} aria-label="Close review"><X /></button></div>
       <p className="mt-4"><b>Name:</b> {selected.profiles?.full_name || '—'}</p><p className="mt-2"><b>Username:</b> {selected.profiles?.username || selected.profiles?.referral_code || '—'}</p><p className="mt-2"><b>Email:</b> {selected.profiles?.email || '—'}</p><p className="mt-2"><b>Phone:</b> {selected.profiles?.phone || '—'}</p><p className="mt-2"><b>Coins:</b> {Number(selectedWallet?.coin_balance || 0).toLocaleString()}</p><p className="mt-2"><b>RP:</b> {Number(selectedWallet?.red_pocket_balance || 0).toLocaleString()}</p><p className="mt-2"><b>Task:</b> {selectedTask?.task_name || '—'}</p><p className="mt-2"><b>Reward:</b> {Number(selectedTask?.reward || 0).toLocaleString()} coins</p>
-      {selectedTask?.is_account_task && <section className="mt-4 rounded-xl border border-indigo-800 bg-indigo-950/50 p-4"><div className="flex items-center justify-between gap-3"><h3 className="font-black text-indigo-200">Assigned task credentials</h3>{selected.task_account && <span className="rounded-full bg-indigo-900 px-2 py-1 text-xs font-bold capitalize">{selected.task_account.status}</span>}</div>{accountLoading ? <p className="mt-3 text-sm text-indigo-200">Loading assigned credentials…</p> : accountError ? <p role="alert" className="mt-3 text-sm text-rose-300">{accountError}</p> : selected.task_account ? <><div className="mt-3 rounded-lg bg-slate-900 p-3"><p className="text-xs font-bold uppercase text-slate-500">Game username</p><p className="mt-1 break-all font-mono text-sm">{selected.task_account.assigned_username || '—'}</p></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-lg bg-slate-900 p-3"><p className="text-xs font-bold uppercase text-slate-500">Email</p><p className="mt-1 break-all font-mono text-sm">{selected.task_account.email}</p><button type="button" onClick={() => void copyCredential(selected.task_account!.email, 'Account email')} className="mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold"><Copy className="h-3.5 w-3.5" />Copy email</button></div><div className="rounded-lg bg-slate-900 p-3"><p className="text-xs font-bold uppercase text-slate-500">Password</p><p className="mt-1 break-all font-mono text-sm">{selected.task_account.password}</p><button type="button" onClick={() => void copyCredential(selected.task_account!.password, 'Account password')} className="mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold"><Copy className="h-3.5 w-3.5" />Copy password</button></div></div></> : <p className="mt-3 text-sm text-amber-200">No account assignment found for this submission.</p>}</section>}
       {selected.proof_text && <p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">{selected.proof_text}</p>}
       {selected.proof_url && safeHttpUrl(selected.proof_url) && <p className="mt-3 break-all text-sm"><b>Proof URL:</b> <a href={safeHttpUrl(selected.proof_url)!} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline">{selected.proof_url}</a></p>}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">{images(selected).map((url, index) => <button key={`${url}-${index}`} onClick={() => setPreview({ images: images(selected), index })}><img src={url} alt={`Proof ${index + 1}`} className="h-24 w-full rounded-lg object-cover" /></button>)}</div>

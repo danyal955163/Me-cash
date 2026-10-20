@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Bell, ClipboardList, KeyRound, LayoutDashboard, ListChecks, LogOut, Menu, Settings, Tag, Users, WalletCards, X } from 'lucide-react';
+import { ArrowLeft, Bell, ClipboardList, LayoutDashboard, ListChecks, LogOut, Menu, Settings, Tag, Users, WalletCards, X } from 'lucide-react';
 import { useState } from 'react';
 
 const nav = [
@@ -10,7 +10,6 @@ const nav = [
   ['/admin/categories', 'Categories', Tag],
   ['/admin/users', 'Users', Users],
   ['/admin/tasks', 'Tasks', ListChecks],
-  ['/admin/task-accounts', 'Task Accounts', KeyRound],
   ['/admin/task-requests', 'Task Requests', ClipboardList],
   ['/admin/submissions', 'Submissions', ClipboardList],
   ['/admin/withdrawals', 'Withdrawals', WalletCards],
