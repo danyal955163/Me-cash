@@ -28,17 +28,15 @@ export async function POST(request: Request) {
   catch { return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 }); }
   const parsed = z.object({ name: nameSchema }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid category name.' }, { status: 400 });
-
+  const categoryName = parsed.data.name;
   const db = createAdminClient();
-  const { data: last } = await db.from('categories').select('sort_order').order('sort_order', { ascending: false }).limit(1).maybeSingle();
   const { data, error } = await db.from('categories')
-    .insert({ name: parsed.data.name, sort_order: (last?.sort_order || 0) + 10 })
+    .insert({ name: categoryName })
     .select('id,name,sort_order,created_at,updated_at')
     .single();
   if (error) {
-    if (error.code === '23505') return NextResponse.json({ error: 'This category already exists.' }, { status: 409 });
-    console.error('Category create failed:', error.message);
-    return NextResponse.json({ error: 'Could not create category.' }, { status: 500 });
+    console.error('Category insert error:', error.message);
+    return NextResponse.json({ error: error.message }, { status: error.code === '23505' ? 409 : 500 });
   }
   return NextResponse.json({ category: data }, { status: 201, headers: { 'Cache-Control': 'private, no-store' } });
 }

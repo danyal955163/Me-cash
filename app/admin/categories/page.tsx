@@ -1,10 +1,12 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
 import type { TaskCategory } from '../../../lib/task-categories';
 
 export default function CategoriesAdmin() {
+  const router = useRouter();
   const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export default function CategoriesAdmin() {
       setNotice(editingId ? 'Category updated.' : 'Category added.');
       cancelEdit();
       await load();
+      router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save category.');
     } finally {
@@ -87,8 +90,8 @@ export default function CategoriesAdmin() {
   return <>
     <div className="flex items-start gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-950 text-red-300"><Tag className="h-6 w-6" /></span><div><p className="text-xs font-black uppercase tracking-widest text-red-400">Task system</p><h1 className="mt-1 text-3xl font-black">Categories</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">Manage the categories shown as filters on the user Tasks page. Deleting a category never deletes its tasks.</p></div></div>
 
-    {error && <p role="alert" className="mt-5 rounded-xl border border-red-900 bg-red-950/60 p-4 text-sm font-semibold text-red-200">{error}</p>}
-    {notice && <p role="status" className="mt-5 rounded-xl border border-emerald-900 bg-emerald-950/50 p-4 text-sm font-semibold text-emerald-200">{notice}</p>}
+    {error && <p role="alert" aria-live="assertive" className="fixed bottom-6 left-1/2 z-[80] w-[min(92vw,32rem)] -translate-x-1/2 rounded-xl border border-red-900 bg-red-950 p-4 text-sm font-semibold text-red-200 shadow-2xl">{error}</p>}
+    {notice && <p role="status" aria-live="polite" className="fixed bottom-6 left-1/2 z-[80] w-[min(92vw,32rem)] -translate-x-1/2 rounded-xl border border-emerald-900 bg-emerald-950 p-4 text-sm font-semibold text-emerald-200 shadow-2xl">{notice}</p>}
 
     <form onSubmit={save} className="mt-7 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"><label className="block text-sm font-bold">{editingId ? 'Rename category' : 'New category'}<input autoFocus value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={60} required placeholder="e.g. Watch & Earn" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-white placeholder:text-slate-500" /></label><div className="mt-4 flex flex-wrap gap-2"><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black hover:bg-red-500 disabled:opacity-60">{editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Category'}</button>{editingId && <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300"><X className="h-4 w-4" />Cancel</button>}</div></form>
 
